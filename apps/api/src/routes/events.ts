@@ -6,7 +6,12 @@ import {
 	ErrorResponse,
 	generateRequestId,
 } from '../schemas';
-import { apiKeyAuth, getAuthContext, getRequestId } from '../middleware';
+import {
+	apiKeyAuth,
+	getAuthContext,
+	getRequestId,
+	rateLimit,
+} from '../middleware';
 import { eventStore } from '../services';
 
 const events = new Hono();
@@ -39,6 +44,8 @@ events.post(
 	'/',
 	// Apply API key authentication middleware
 	apiKeyAuth(),
+	// Apply per-API-key rate limit: 1000 requests per 60s (MVP). TODO: move to redis.
+	rateLimit({ scope: 'api_key', limit: 1000, windowSeconds: 60 }),
 	// Validate request body against EventBatchRequest schema
 	zValidator('json', EventBatchRequestSchema, (result, c) => {
 		if (!result.success) {

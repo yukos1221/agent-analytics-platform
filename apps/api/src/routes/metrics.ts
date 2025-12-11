@@ -5,6 +5,7 @@ import {
 	generateRequestId,
 	ErrorResponse,
 } from '../schemas';
+import { jwtAuth, getAuthContext, rateLimit } from '../middleware';
 import { computeMetricsOverview } from '../services';
 
 const metrics = new Hono();
@@ -41,6 +42,11 @@ const metrics = new Hono();
  * - avg_session_duration: Average execution time per session
  * - error_count: Number of error events
  */
+// Protect metrics routes with JWT auth (keep /health public)
+metrics.use('*', jwtAuth());
+// Apply org-scoped rate limit: 100 requests per 60s (MVP). Replace with Redis in Phase 2.
+metrics.use('*', rateLimit({ scope: 'org', limit: 100, windowSeconds: 60 }));
+
 metrics.get('/overview', async (c) => {
 	const requestId = generateRequestId();
 
@@ -69,11 +75,9 @@ metrics.get('/overview', async (c) => {
 	const period = periodResult.data;
 
 	try {
-		// For MVP, we use a default org_id since dashboard auth is not yet implemented
-		// TODO: Phase 2 - Extract org_id from JWT token
-		// Per OpenAPI spec: "JWT access token obtained via OAuth 2.0/OIDC flow"
-		// Token payload includes: custom:org_id
-		const orgId = 'org_default';
+		// Extract org_id from JWT auth context (set by jwtAuth)
+		const auth = getAuthContext(c);
+		const orgId = auth?.org_id || 'org_default';
 
 		// Compute metrics from event store
 		const metricsData = await computeMetricsOverview(
