@@ -13,10 +13,10 @@ export interface AuthContext {
 /**
  * API Key format per spec (docs/03-api-specification-v1.2.md):
  *
- * ak_live_org_xyz789_k3j4h5g6f7d8s9a0
- * └┬┘ └─┬─┘ └───┬───┘ └───────┬──────┘
- *  │    │       │              │
- * Prefix Env   Org ID     Random (20 chars)
+ * ak_live_org_acme123_XXXXXXXXXXXXXXXXXXXX
+ * └┬┘ └─┬─┘ └───┬───┘ └────────┬─────────┘
+ *  │    │       │               │
+ * Prefix Env   Org ID      Random (20 chars)
  *
  * Prefix: ak_ (always)
  * Environment: live | test | dev

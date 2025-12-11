@@ -12,21 +12,30 @@
 import type { Event, EventBatchRequest } from '../../src/schemas';
 
 // =============================================================================
-// API Keys
+// API Keys (TEST FIXTURES - NOT REAL SECRETS)
 // =============================================================================
 
 /**
- * Valid API key format per docs/03-api-specification-v1.2.md Section 4.3:
+ * FAKE API keys for testing only - these are NOT real secrets.
+ *
+ * Format per docs/03-api-specification-v1.2.md Section 4.3:
  * ak_{env}_{org_id}_{random}
+ *
+ * These use obviously fake patterns (00000, FAKE, TEST) to avoid
+ * triggering secret detection tools like GitGuardian.
  */
 export const API_KEYS = {
-	ORG_A: 'ak_live_org_testorg123_abcdefghij1234567890',
-	ORG_B: 'ak_live_org_otherorg456_zyxwvutsrq0987654321',
-	STAGING: 'ak_test_org_stagingorg_qwertyuiop1234567890',
-	DEV: 'ak_dev_org_devorg789_asdfghjkl01234567890',
-	INVALID_FORMAT: 'invalid-api-key-format',
-	INVALID_PREFIX: 'xx_live_org_test_abcdefghij1234567890',
-	MISSING_ORG: 'ak_live__abcdefghij1234567890',
+	// nosemgrep: generic-api-key
+	ORG_A: 'ak_live_org_testorg123_FAKE00000000000000',
+	// nosemgrep: generic-api-key
+	ORG_B: 'ak_live_org_otherorg456_FAKE11111111111111',
+	// nosemgrep: generic-api-key
+	STAGING: 'ak_test_org_stagingorg_TEST00000000000000',
+	// nosemgrep: generic-api-key
+	DEV: 'ak_dev_org_devorg789_TEST11111111111111',
+	INVALID_FORMAT: 'not-a-valid-key-format',
+	INVALID_PREFIX: 'xx_live_org_test_FAKE00000000000000',
+	MISSING_ORG: 'ak_live__FAKE00000000000000000',
 } as const;
 
 // =============================================================================
