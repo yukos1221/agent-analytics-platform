@@ -1,0 +1,121 @@
+# Minimal CI Workflow for MVP (Phase 1)
+#
+# Spec Reference: docs/05-development-deployment-v1.2.md §2 & §8
+#
+# MVP Scope (Phase 1):
+#   ✅ Lint (ESLint, Prettier)
+#   ✅ Type check (TypeScript)
+#   ✅ Unit tests (Vitest)
+#   ✅ Build verification
+#
+# Deferred to Phase 2+:
+#   ❌ Integration tests (manual for MVP)
+#   ❌ E2E tests (manual for MVP)
+#   ❌ Preview deployments
+#   ❌ Code coverage upload
+#   ❌ Security scanning (CodeQL)
+#   ❌ Blue-green deployments
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================================
+  # LINT & TYPE CHECK
+  # Per Dev/Deploy Spec §14.3: "Lint (ESLint, Prettier)" and "Type check (TypeScript)"
+  # =============================================================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+  # =============================================================================
+  # UNIT TESTS
+  # Per Dev/Deploy Spec §14.3: "Unit tests (Vitest)"
+  # =============================================================================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+  # =============================================================================
+  # BUILD VERIFICATION
+  # Per Dev/Deploy Spec §14.3: "Build verification"
+  # Builds both api and dashboard apps for MVP
+  # =============================================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
