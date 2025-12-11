@@ -339,7 +339,7 @@ export async function computeMetricsOverview(
 				allEvents,
 				config.previousStartDate,
 				config.previousEndDate
-			)
+		)
 		: [];
 
 	// Calculate current period metrics

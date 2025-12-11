@@ -2,10 +2,9 @@
 const nextConfig = {
 	reactStrictMode: true,
 
-	// Enable ISR memory caching
-	experimental: {
-		typedRoutes: true,
-	},
+	// Note: typedRoutes disabled for MVP (routes not fully implemented)
+	// TODO: Re-enable in Phase 2 when all routes exist
+	experimental: {},
 
 	// Cache headers for static assets
 	async headers() {
