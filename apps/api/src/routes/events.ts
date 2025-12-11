@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
 import {
 	EventBatchRequestSchema,
 	EventBatchResponse,
-	EventBatchError,
-	generateRequestId,
 	ErrorResponse,
+	generateRequestId,
 } from '../schemas';
+import { apiKeyAuth, getAuthContext, getRequestId } from '../middleware';
+import { eventStore } from '../services';
 
 const events = new Hono();
 
@@ -16,18 +16,45 @@ const events = new Hono();
  * Ingest analytics events (batch)
  *
  * OpenAPI: operationId: ingestEvents
- * Auth: ApiKeyAuth (X-API-Key header)
- * Status codes: 202 (accepted), 400, 401, 422, 429, 500
+ * Spec: specs/openapi.mvp.v1.yaml lines 98-172
+ * Docs: docs/03-api-specification-v1.2.md Section 6.1
+ *
+ * Authentication: ApiKeyAuth (X-API-Key header)
+ * - Per OpenAPI spec, requires X-API-Key header
+ * - For MVP, we validate format and extract org_id
+ * - Phase 2 will add signature verification
+ *
+ * Request Body: EventBatchRequest
+ * - events: array of Event objects (1-1000 items)
+ *
+ * Response:
+ * - 202 Accepted: Events accepted for processing
+ * - 400 Bad Request: Invalid request format
+ * - 401 Unauthorized: Missing or invalid API key
+ * - 422 Validation Error: Request body validation failed
+ * - 429 Rate Limit Exceeded: Too many requests
+ * - 500 Internal Error: Server error
  */
 events.post(
 	'/',
+	// Apply API key authentication middleware
+	apiKeyAuth(),
+	// Validate request body against EventBatchRequest schema
 	zValidator('json', EventBatchRequestSchema, (result, c) => {
 		if (!result.success) {
-			const requestId = generateRequestId();
+			const requestId = getRequestId(c);
+
+			// Transform Zod errors to match OpenAPI ValidationError format
+			// Per OpenAPI spec: error.details.errors[] with field, message, received
 			const errors = result.error.issues.map((issue) => ({
 				field: issue.path.join('.'),
 				message: issue.message,
-				received: String(issue.code),
+				received: String(
+					issue.path.length > 0
+						? (issue as unknown as { received?: unknown }).received ??
+								issue.code
+						: issue.code
+				),
 			}));
 
 			const response: ErrorResponse = {
@@ -39,40 +66,65 @@ events.post(
 				request_id: requestId,
 			};
 
+			// 422 Unprocessable Entity for validation errors
+			// Per OpenAPI spec: ValidationError response
 			return c.json(response, 422);
 		}
 	}),
 	async (c) => {
-		const requestId = generateRequestId();
+		const requestId = getRequestId(c);
+		const authContext = getAuthContext(c);
 		const body = c.req.valid('json');
 
-		// TODO: Implement actual event ingestion
-		// For now, accept all valid events
-		const accepted = body.events.length;
-		const rejected = 0;
-		const errors: EventBatchError[] = [];
+		try {
+			// Ingest events with organization context
+			// Per OpenAPI spec: "Duplicate event_ids are rejected"
+			const result = await eventStore.ingest(authContext.org_id, body.events);
 
-		// TODO: Check for duplicate event_ids
-		// TODO: Queue events for async processing (Kinesis)
+			// Build response per OpenAPI EventBatchResponse schema
+			// Required: accepted, rejected, request_id
+			// Optional: errors (only include if there are rejected events)
+			const response: EventBatchResponse = {
+				accepted: result.accepted,
+				rejected: result.rejected,
+				request_id: requestId,
+			};
 
-		const response: EventBatchResponse = {
-			accepted,
-			rejected,
-			request_id: requestId,
-		};
+			// Only include errors array if there are rejected events
+			// Per OpenAPI spec: errors is optional
+			if (result.errors.length > 0) {
+				response.errors = result.errors;
+			}
 
-		// Only include errors array if there are rejected events
-		if (errors.length > 0) {
-			response.errors = errors;
+			// Set rate limit headers per OpenAPI spec (components/headers)
+			// X-RateLimit-Limit: Maximum requests allowed per time window
+			// X-RateLimit-Remaining: Remaining requests in current window
+			// X-RateLimit-Reset: Unix timestamp when rate limit resets
+			c.header('X-RateLimit-Limit', '1000');
+			c.header('X-RateLimit-Remaining', '999');
+			c.header(
+				'X-RateLimit-Reset',
+				String(Math.floor(Date.now() / 1000) + 3600)
+			);
+
+			// Return 202 Accepted per OpenAPI spec
+			// Events are processed asynchronously (for now, stored in memory)
+			return c.json(response, 202);
+		} catch (error) {
+			// 500 Internal Server Error
+			// Per OpenAPI spec: InternalError response
+			console.error('Event ingestion error:', error);
+
+			const response: ErrorResponse = {
+				error: {
+					code: 'SRV_INTERNAL_ERROR',
+					message: 'An unexpected error occurred. Please try again.',
+				},
+				request_id: requestId,
+			};
+
+			return c.json(response, 500);
 		}
-
-		// Set rate limit headers per OpenAPI spec
-		c.header('X-RateLimit-Limit', '1000');
-		c.header('X-RateLimit-Remaining', '999');
-		c.header('X-RateLimit-Reset', String(Math.floor(Date.now() / 1000) + 3600));
-
-		// Return 202 Accepted per OpenAPI spec
-		return c.json(response, 202);
 	}
 );
 
