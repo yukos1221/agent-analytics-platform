@@ -5,6 +5,7 @@ import {
 	generateRequestId,
 	ErrorResponse,
 } from '../schemas';
+import { computeMetricsOverview } from '../services';
 
 const metrics = new Hono();
 
@@ -13,9 +14,32 @@ const metrics = new Hono();
  * Get dashboard overview metrics
  *
  * OpenAPI: operationId: getMetricsOverview
- * Auth: BearerAuth (JWT)
- * Query params: period (1d|7d|30d|90d, default: 7d), compare (boolean, default: true)
- * Status codes: 200, 400, 401, 429, 500
+ * Spec: specs/openapi.mvp.v1.yaml lines 177-231
+ * Docs: docs/03-api-specification-v1.2.md Section 6.2
+ *
+ * Authentication: BearerAuth (JWT) - for MVP, we accept any request
+ * TODO: Phase 2 - Add JWT validation via middleware
+ *
+ * Query Parameters:
+ * - period: Time period for metrics (1d|7d|30d|90d, default: 7d)
+ * - compare: Include comparison with previous period (boolean, default: true)
+ *
+ * Response:
+ * - 200 OK: MetricsOverviewResponse with computed metrics
+ * - 400 Bad Request: Invalid query parameters
+ * - 401 Unauthorized: Missing or invalid auth (Phase 2)
+ * - 429 Rate Limit Exceeded: Too many requests
+ * - 500 Internal Error: Server error
+ *
+ * MVP P0 Metrics (per docs/01-product-requirements.md Section 3):
+ * - active_users: Daily/Weekly Active Users (unique users per period)
+ * - total_sessions: Total Agent Sessions (completed + running + failed)
+ * - success_rate: Session Success Rate (completed / total × 100%)
+ * - total_cost: Total Spend (estimated from tokens)
+ *
+ * MVP Optional Metrics:
+ * - avg_session_duration: Average execution time per session
+ * - error_count: Number of error events
  */
 metrics.get('/overview', async (c) => {
 	const requestId = generateRequestId();
@@ -24,7 +48,7 @@ metrics.get('/overview', async (c) => {
 	const periodParam = c.req.query('period') || '7d';
 	const compareParam = c.req.query('compare') !== 'false'; // default true
 
-	// Validate period parameter
+	// Validate period parameter against OpenAPI enum
 	const periodResult = PeriodQuerySchema.safeParse(periodParam);
 	if (!periodResult.success) {
 		const response: ErrorResponse = {
@@ -44,96 +68,55 @@ metrics.get('/overview', async (c) => {
 
 	const period = periodResult.data;
 
-	// Calculate period dates
-	const now = new Date();
-	const periodDays = {
-		'1d': 1,
-		'7d': 7,
-		'30d': 30,
-		'90d': 90,
-	}[period];
+	try {
+		// For MVP, we use a default org_id since dashboard auth is not yet implemented
+		// TODO: Phase 2 - Extract org_id from JWT token
+		// Per OpenAPI spec: "JWT access token obtained via OAuth 2.0/OIDC flow"
+		// Token payload includes: custom:org_id
+		const orgId = 'org_default';
 
-	const end = now.toISOString();
-	const start = new Date(
-		now.getTime() - periodDays * 24 * 60 * 60 * 1000
-	).toISOString();
+		// Compute metrics from event store
+		const metricsData = await computeMetricsOverview(
+			orgId,
+			period,
+			compareParam
+		);
 
-	// TODO: Fetch actual metrics from database/cache
-	// For now, return mock data matching the schema exactly
-	const response: MetricsOverviewResponse = {
-		period: {
-			start,
-			end,
-		},
-		metrics: {
-			active_users: {
-				value: 1247,
-				...(compareParam && {
-					previous: 1189,
-					change_percent: 4.88,
-					trend: 'up' as const,
-				}),
+		// Build response matching OpenAPI MetricsOverviewResponse schema exactly
+		const response: MetricsOverviewResponse = {
+			period: metricsData.period,
+			metrics: metricsData.metrics,
+			meta: {
+				cache_hit: false, // TODO: Implement caching in Phase 2
+				cache_ttl: 60,
+				request_id: requestId,
 			},
-			total_sessions: {
-				value: 8432,
-				...(compareParam && {
-					previous: 7891,
-					change_percent: 6.86,
-					trend: 'up' as const,
-				}),
+		};
+
+		// Set rate limit headers per OpenAPI spec (components/headers)
+		c.header('X-RateLimit-Limit', '1000');
+		c.header('X-RateLimit-Remaining', '999');
+		c.header('X-RateLimit-Reset', String(Math.floor(Date.now() / 1000) + 3600));
+
+		// Set cache header per OpenAPI spec description
+		// "Cached for 60 seconds"
+		c.header('Cache-Control', 'private, max-age=60');
+
+		return c.json(response, 200);
+	} catch (error) {
+		// 500 Internal Server Error
+		console.error('Metrics computation error:', error);
+
+		const response: ErrorResponse = {
+			error: {
+				code: 'SRV_INTERNAL_ERROR',
+				message: 'An unexpected error occurred. Please try again.',
 			},
-			success_rate: {
-				value: 94.2,
-				unit: 'percent',
-				...(compareParam && {
-					previous: 92.8,
-					change_percent: 1.51,
-					trend: 'up' as const,
-				}),
-			},
-			avg_session_duration: {
-				value: 342,
-				unit: 'seconds',
-				...(compareParam && {
-					previous: 328,
-					change_percent: 4.27,
-					trend: 'up' as const,
-				}),
-			},
-			total_cost: {
-				value: 2847.52,
-				unit: 'usd',
-				...(compareParam && {
-					previous: 2654.31,
-					change_percent: 7.28,
-					trend: 'up' as const,
-				}),
-			},
-			error_count: {
-				value: 156,
-				...(compareParam && {
-					previous: 203,
-					change_percent: -23.15,
-					trend: 'down' as const,
-				}),
-			},
-		},
-		meta: {
-			cache_hit: false,
-			cache_ttl: 60,
 			request_id: requestId,
-		},
-	};
+		};
 
-	// Set rate limit headers per OpenAPI spec
-	c.header('X-RateLimit-Limit', '1000');
-	c.header('X-RateLimit-Remaining', '999');
-	c.header('X-RateLimit-Reset', String(Math.floor(Date.now() / 1000) + 3600));
-
-	// Set cache header per OpenAPI spec
-	c.header('Cache-Control', 'private, max-age=60');
-
-	return c.json(response, 200);
+		return c.json(response, 500);
+	}
 });
 
 export default metrics;

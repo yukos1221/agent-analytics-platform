@@ -143,3 +143,7 @@ class InMemoryEventStore {
 // Singleton instance for the application
 // TODO: Replace with database repository when implementing Postgres storage
 export const eventStore = new InMemoryEventStore();
+
+// Re-export metrics service
+export { computeMetricsOverview } from './metricsOverviewService';
+export type { MetricsOverviewData } from './metricsOverviewService';
