@@ -12,6 +12,57 @@
 
 import { test, expect } from '@playwright/test';
 
+// =============================================================================
+// SMOKE TEST - Minimal sanity check per Testing Spec MVP scope
+// Simple, stable, high-value scenario for CI/CD gating
+// =============================================================================
+test.describe('Smoke Test', () => {
+	/**
+	 * Minimal Smoke Test
+	 *
+	 * This is the simplest possible E2E test that validates:
+	 * 1. Dashboard page loads
+	 * 2. KPI cards appear
+	 * 3. Metric values are rendered
+	 * 4. Screenshot for visual verification
+	 *
+	 * Per Testing Spec §1.5: MVP E2E tests should be "simple, stable, high-value"
+	 * This test can run in < 10 seconds and catches major regressions.
+	 */
+	test('dashboard loads with KPI metrics', async ({ page }) => {
+		// Step 1: Open dashboard page
+		await page.goto('/');
+
+		// Step 2: Wait for KPI cards to appear (4 cards per PRD §5.1)
+		// Look for the KPI card titles which are always present
+		await expect(page.getByText('Active Users')).toBeVisible({
+			timeout: 15000,
+		});
+		await expect(page.getByText('Total Sessions')).toBeVisible();
+		await expect(page.getByText('Success Rate')).toBeVisible();
+		await expect(page.getByText('Estimated Cost')).toBeVisible();
+
+		// Step 3: Assert metric values are rendered (not empty/skeleton)
+		// Check that main content area contains numeric values
+		const mainContent = page.locator('main');
+		const contentText = await mainContent.textContent();
+
+		// Metrics should show numbers (e.g., "1,247", "95.5%", "$1,234.56")
+		expect(contentText).toMatch(/\d+/); // Has at least one number
+		expect(contentText).toMatch(/%/); // Success Rate shows percentage
+		expect(contentText).toMatch(/\$/); // Estimated Cost shows dollar
+
+		// Step 4: Take screenshot for visual verification
+		await page.screenshot({
+			path: 'tests/e2e/screenshots/smoke-test-dashboard.png',
+			fullPage: true,
+		});
+	});
+});
+
+// =============================================================================
+// DETAILED TESTS - Additional coverage for development
+// =============================================================================
 test.describe('Dashboard Overview', () => {
 	test.describe('KPI Metrics Display', () => {
 		test('displays dashboard with KPI cards', async ({ page }) => {

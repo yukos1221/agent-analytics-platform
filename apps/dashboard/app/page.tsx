@@ -2,10 +2,11 @@ import { Suspense } from 'react';
 import { getMetricsOverview } from '@/lib/api/metrics';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
-import { MetricGrid } from '@/components/dashboard/metric-grid';
-import { MetricGridSkeleton } from '@/components/dashboard/metric-grid-skeleton';
-import { ActivityChart } from '@/components/dashboard/activity-chart';
-import { ActivityChartSkeleton } from '@/components/dashboard/activity-chart-skeleton';
+import {
+	DashboardOverview,
+	MetricGridSkeleton,
+	ActivityChartSkeleton,
+} from '@/components/dashboard';
 import type { MetricsOverviewResponse } from '@/types/api';
 
 export const metadata = {
@@ -19,72 +20,43 @@ export const revalidate = 60;
 /**
  * Dashboard Overview Page (Server Component)
  *
- * MVP Features per PRD:
+ * MVP Features per PRD §2.3 and §5.1:
  * - 4 KPI metric cards: DAU, Total Sessions, Success Rate, Estimated Cost
+ * - Period selector: Last 24h, 7d, 30d, 90d (preset only for MVP)
  * - Sessions over time chart (line)
  * - Errors by type chart (bar)
  *
- * Data Flow per Frontend Architecture Spec:
+ * Data Flow per Frontend Architecture Spec §4.3:
  * - Server-side data fetching for initial load (<2s target)
  * - Pass initialData to client components for hydration
  * - React Query handles client-side refresh
+ *
+ * User Personas Served (PRD §2):
+ * - Engineering Manager: Team metrics, adoption trends
+ * - Lead Developer: Session performance, success rates
+ * - DevOps: Infrastructure costs, error monitoring
+ * - CTO: Executive overview, spending
  */
 async function DashboardContent() {
-	// Server-side data fetching
+	// Server-side data fetching for initial load (7d default)
 	let initialMetrics: MetricsOverviewResponse | null = null;
-	let fetchError: string | null = null;
 
 	try {
 		initialMetrics = await getMetricsOverview({ period: '7d', compare: true });
 	} catch (error) {
-		console.error('Failed to fetch metrics:', error);
-		fetchError =
-			error instanceof Error ? error.message : 'Failed to load metrics';
+		// Log error but continue - client will refetch
+		console.error('Server-side metrics fetch failed:', error);
 	}
 
 	return (
-		<div className='space-y-6'>
-			{/* Page header */}
-			<div>
-				<h1 className='text-2xl font-semibold text-gray-900'>
-					Dashboard Overview
-				</h1>
-				<p className='mt-1 text-sm text-gray-500'>
-					Monitor your AI agent performance and metrics
-				</p>
-			</div>
-
-			{/* KPI Metric Cards - 4 cards per PRD */}
-			{fetchError ? (
-				<div className='rounded-lg border border-error-200 bg-error-50 p-4'>
-					<p className='text-sm text-error-700'>{fetchError}</p>
-				</div>
-			) : (
-				<MetricGrid initialData={initialMetrics} />
-			)}
-
-			{/* Charts section */}
-			<div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-				{/* Sessions over time - Line chart per PRD */}
-				<Suspense
-					fallback={<ActivityChartSkeleton title='Sessions Over Time' />}
-				>
-					<ActivityChart title='Sessions Over Time' type='sessions' />
-				</Suspense>
-
-				{/* Errors by type - Bar chart per PRD */}
-				<Suspense fallback={<ActivityChartSkeleton title='Errors by Type' />}>
-					<ActivityChart title='Errors by Type' type='errors' />
-				</Suspense>
-			</div>
-		</div>
+		<DashboardOverview initialMetrics={initialMetrics} defaultPeriod='7d' />
 	);
 }
 
 export default function DashboardPage() {
 	return (
 		<div className='flex h-screen overflow-hidden'>
-			{/* Sidebar navigation */}
+			{/* Sidebar navigation per Frontend Spec §5.1 */}
 			<Sidebar />
 
 			{/* Main content area */}
@@ -106,9 +78,12 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
 	return (
 		<div className='space-y-6'>
-			<div>
-				<div className='h-8 w-48 skeleton rounded' />
-				<div className='mt-2 h-4 w-72 skeleton rounded' />
+			<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+				<div>
+					<div className='h-8 w-48 animate-pulse rounded bg-gray-200' />
+					<div className='mt-2 h-4 w-72 animate-pulse rounded bg-gray-200' />
+				</div>
+				<div className='h-10 w-40 animate-pulse rounded bg-gray-200' />
 			</div>
 			<MetricGridSkeleton />
 			<div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
