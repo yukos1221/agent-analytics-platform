@@ -7,6 +7,7 @@ import {
 } from '../schemas';
 import { jwtAuth, getAuthContext, rateLimit } from '../middleware';
 import { computeMetricsOverview } from '../services';
+import { getOrSetCachedMetrics } from '../lib/cache/metricsCache';
 
 const metrics = new Hono();
 
@@ -79,11 +80,14 @@ metrics.get('/overview', async (c) => {
 		const auth = getAuthContext(c);
 		const orgId = auth?.org_id || 'org_default';
 
-		// Compute metrics from event store
-		const metricsData = await computeMetricsOverview(
-			orgId,
-			period,
-			compareParam
+		// Compute metrics (with caching)
+		const ttlMs = Number(process.env.METRICS_CACHE_TTL_MS || '300000'); // default 5 minutes
+		const cacheKey = `metrics:${orgId}:period=${period}:compare=${compareParam}`;
+
+		const { value: metricsData, cacheHit } = await getOrSetCachedMetrics(
+			cacheKey,
+			ttlMs,
+			() => computeMetricsOverview(orgId, period, compareParam)
 		);
 
 		// Build response matching OpenAPI MetricsOverviewResponse schema exactly
@@ -91,8 +95,8 @@ metrics.get('/overview', async (c) => {
 			period: metricsData.period,
 			metrics: metricsData.metrics,
 			meta: {
-				cache_hit: false, // TODO: Implement caching in Phase 2
-				cache_ttl: 60,
+				cache_hit: cacheHit,
+				cache_ttl: Math.floor(ttlMs / 1000),
 				request_id: requestId,
 			},
 		};

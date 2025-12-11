@@ -12,7 +12,7 @@ import {
 	getRequestId,
 	rateLimit,
 } from '../middleware';
-import { eventStore } from '../services';
+import { insertEvents } from '../../../packages/database/src';
 
 const events = new Hono();
 
@@ -84,9 +84,9 @@ events.post(
 		const body = c.req.valid('json');
 
 		try {
-			// Ingest events with organization context
+			// Persist events to DB (Phase 1). Falls back to in-memory store.
 			// Per OpenAPI spec: "Duplicate event_ids are rejected"
-			const result = await eventStore.ingest(authContext.org_id, body.events);
+			const result = await insertEvents(authContext.org_id, body.events);
 
 			// Build response per OpenAPI EventBatchResponse schema
 			// Required: accepted, rejected, request_id

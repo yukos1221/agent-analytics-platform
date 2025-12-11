@@ -19,6 +19,11 @@
  */
 
 import { eventStore, type StoredEvent } from './index';
+import {
+	queryEventsByOrgRange,
+	querySessionsByOrgRange,
+	aggregateTokensByOrgRange,
+} from '../../../packages/database/src';
 import type { MetricValue, Trend, PeriodQuery } from '../schemas';
 
 /**
@@ -323,30 +328,106 @@ export async function computeMetricsOverview(
 	// Get period configuration
 	const config = getPeriodConfig(period);
 
-	// Fetch all events for this organization
-	const allEvents = eventStore.getByOrg(orgId);
-
-	// Filter events by current period
-	const currentEvents = filterEventsByDateRange(
-		allEvents,
+	// Fetch events and sessions for this organization from DB (fallback to in-memory)
+	let allEvents: StoredEvent[] = [];
+	const eventsRows = await queryEventsByOrgRange(
+		orgId,
 		config.startDate,
 		config.endDate
 	);
+	if (eventsRows && Array.isArray(eventsRows)) {
+		allEvents = eventsRows.map(
+			(r: any) =>
+				({
+					event_id: r.event_id,
+					org_id: r.org_id,
+					session_id: r.session_id,
+					user_id: r.user_id,
+					agent_id: r.agent_id,
+					event_type: r.event_type,
+					timestamp:
+						r.timestamp instanceof Date
+							? r.timestamp.toISOString()
+							: r.timestamp,
+					environment: r.environment,
+					metadata: r.metadata,
+					ingested_at: r.ingested_at
+						? r.ingested_at instanceof Date
+							? r.ingested_at.toISOString()
+							: r.ingested_at
+						: new Date().toISOString(),
+				} as StoredEvent)
+		);
+	} else {
+		// No DB configured: fallback to in-memory event store for the org
+		allEvents = eventStore.getByOrg(orgId);
+	}
+	// Filter events by current period (already queried for current period)
+	const currentEvents = allEvents;
 
-	// Filter events by previous period (for comparison)
-	const previousEvents = compare
-		? filterEventsByDateRange(
-				allEvents,
+	// For previous period, try DB query first
+	let previousEvents: StoredEvent[] = [];
+	if (compare) {
+		const prevRows = await queryEventsByOrgRange(
+			orgId,
+			config.previousStartDate,
+			config.previousEndDate
+		);
+		if (prevRows && Array.isArray(prevRows)) {
+			previousEvents = prevRows.map(
+				(r: any) =>
+					({
+						event_id: r.event_id,
+						org_id: r.org_id,
+						session_id: r.session_id,
+						user_id: r.user_id,
+						agent_id: r.agent_id,
+						event_type: r.event_type,
+						timestamp:
+							r.timestamp instanceof Date
+								? r.timestamp.toISOString()
+								: r.timestamp,
+						environment: r.environment,
+						metadata: r.metadata,
+						ingested_at: r.ingested_at
+							? r.ingested_at instanceof Date
+								? r.ingested_at.toISOString()
+								: r.ingested_at
+							: new Date().toISOString(),
+					} as StoredEvent)
+			);
+		} else {
+			// Fallback to in-memory filter
+			const allOrgEvents = eventStore.getByOrg(orgId);
+			previousEvents = filterEventsByDateRange(
+				allOrgEvents,
 				config.previousStartDate,
 				config.previousEndDate
-		)
-		: [];
+			);
+		}
+	}
 
 	// Calculate current period metrics
 	const currentActiveUsers = countActiveUsers(currentEvents);
 	const currentSessions = countSessions(currentEvents);
 	const currentSuccessRate = calculateSuccessRate(currentEvents);
-	const currentTotalCost = calculateTotalCost(currentEvents);
+	// If DB available, aggregate tokens for cost calculation
+	let currentTotalCost = calculateTotalCost(currentEvents);
+	const dbTokens = await aggregateTokensByOrgRange(
+		orgId,
+		config.startDate,
+		config.endDate
+	);
+	if (dbTokens) {
+		const INPUT_TOKEN_COST = 0.003 / 1000;
+		const OUTPUT_TOKEN_COST = 0.015 / 1000;
+		currentTotalCost = Number(
+			(
+				dbTokens.tokens_input * INPUT_TOKEN_COST +
+				dbTokens.tokens_output * OUTPUT_TOKEN_COST
+			).toFixed(2)
+		);
+	}
 	const currentAvgDuration = calculateAvgSessionDuration(currentEvents);
 	const currentErrorCount = countErrors(currentEvents);
 
