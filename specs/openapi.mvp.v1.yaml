@@ -1,0 +1,1597 @@
+openapi: 3.0.3
+info:
+  title: AI Agent Analytics Platform API
+  description: |
+    API for ingesting, querying, and visualizing analytics data from AI coding agents.
+    
+    ## Authentication
+    
+    The API supports two authentication methods:
+    
+    ### JWT Bearer Token (Dashboard Users)
+    Used by dashboard applications. Obtain tokens via OAuth 2.0/OIDC flow with Cognito.
+    ```
+    Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
+    ```
+    
+    ### API Key (Agent SDK / M2M)
+    Used by agent SDKs for event ingestion. Include key and signature headers.
+    ```
+    X-API-Key: ak_live_org_xyz789_k3j4h5g6f7d8s9a0
+    X-Timestamp: 1703000700000
+    X-Signature: a1b2c3d4e5f6...
+    ```
+    
+    ## Rate Limiting
+    
+    All endpoints are rate limited. Check response headers:
+    - `X-RateLimit-Limit`: Requests allowed per window
+    - `X-RateLimit-Remaining`: Requests remaining
+    - `X-RateLimit-Reset`: Unix timestamp when limit resets
+    
+    ## Pagination
+    
+    List endpoints use cursor-based pagination for stable results with real-time data.
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@example.com
+  license:
+    name: Proprietary
+    url: https://example.com/terms
+
+servers:
+  - url: https://api.analytics.example.com/v1
+    description: Production server
+  - url: https://api.staging.analytics.example.com/v1
+    description: Staging server
+  - url: http://localhost:3001/v1
+    description: Local development
+
+tags:
+  - name: Events
+    description: Event ingestion for agent analytics
+  - name: Metrics
+    description: Pre-aggregated metrics for dashboards
+  - name: Sessions
+    description: Session-level analytics
+  - name: API Keys
+    description: API key management
+  - name: Organizations
+    description: Organization information
+  - name: Health
+    description: Service health checks
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ====================
+  # Health Check
+  # ====================
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check endpoint
+      description: Returns service health status. No authentication required.
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ====================
+  # Events API
+  # ====================
+  /events:
+    post:
+      operationId: ingestEvents
+      summary: Ingest analytics events
+      description: |
+        Batch ingest analytics events from Agent SDK.
+        
+        - Maximum 1000 events per request
+        - Events are processed asynchronously
+        - Duplicate event_ids are rejected
+        
+        **Authentication:** API Key required (agents/SDK)
+      tags:
+        - Events
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventBatchRequest'
+            examples:
+              sessionEvents:
+                summary: Session lifecycle events
+                value:
+                  events:
+                    - event_id: "evt_01HGX5VBJX2Q8JYXMVQZRK3456"
+                      event_type: "session_start"
+                      timestamp: "2025-12-09T10:30:00.000Z"
+                      session_id: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+                      user_id: "user_dev_alice"
+                      agent_id: "agent_claude_code"
+                      environment: "production"
+                      metadata:
+                        agent_version: "1.2.3"
+                        ide: "vscode"
+                        os: "macos"
+                    - event_id: "evt_01HGX5VBJX2Q8JYXMVQZRK3457"
+                      event_type: "task_complete"
+                      timestamp: "2025-12-09T10:35:00.000Z"
+                      session_id: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+                      user_id: "user_dev_alice"
+                      agent_id: "agent_claude_code"
+                      environment: "production"
+                      metadata:
+                        task_type: "code_generation"
+                        tokens_input: 1500
+                        tokens_output: 3200
+                        duration_ms: 4500
+                        success: true
+      responses:
+        '202':
+          description: Events accepted for processing
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ====================
+  # Metrics API
+  # ====================
+  /metrics/overview:
+    get:
+      operationId: getMetricsOverview
+      summary: Get dashboard overview metrics
+      description: |
+        Returns pre-aggregated KPI metrics for the dashboard overview.
+        
+        - Cached for 60 seconds
+        - Includes period-over-period comparison when `compare=true`
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+      tags:
+        - Metrics
+      parameters:
+        - name: period
+          in: query
+          required: false
+          description: Time period for metrics
+          schema:
+            type: string
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
+        - name: compare
+          in: query
+          required: false
+          description: Include comparison with previous period
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Overview metrics retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            Cache-Control:
+              schema:
+                type: string
+                example: "private, max-age=60"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsOverviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /metrics/timeseries:
+    get:
+      operationId: getMetricsTimeseries
+      summary: Get time-series metrics for charts
+      description: |
+        Returns time-series data points for charting.
+        
+        - Supports multiple granularities based on period
+        - Includes statistical aggregations (min, max, avg, percentiles)
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+      tags:
+        - Metrics
+      parameters:
+        - name: metric
+          in: query
+          required: true
+          description: Metric to retrieve
+          schema:
+            type: string
+            enum:
+              - active_users
+              - total_sessions
+              - session_duration
+              - success_rate
+              - error_rate
+              - tokens_used
+              - cost
+        - name: period
+          in: query
+          required: false
+          description: Time period for data
+          schema:
+            type: string
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
+        - name: granularity
+          in: query
+          required: false
+          description: |
+            Data point granularity. Defaults based on period:
+            - 1d → hour
+            - 7d → day
+            - 30d → day
+            - 90d → week
+          schema:
+            type: string
+            enum: [hour, day, week]
+      responses:
+        '200':
+          description: Time-series data retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsTimeseriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ====================
+  # Sessions API
+  # ====================
+  /sessions:
+    get:
+      operationId: listSessions
+      summary: List sessions
+      description: |
+        Returns a paginated list of sessions with optional filters.
+        
+        - Uses cursor-based pagination for stable results
+        - Supports filtering by status, time range, and more
+        - Default sort is by `started_at` descending
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+      tags:
+        - Sessions
+      parameters:
+        - name: start_time
+          in: query
+          required: false
+          description: Filter sessions started after this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          required: false
+          description: Filter sessions started before this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: status
+          in: query
+          required: false
+          description: Filter by session status
+          schema:
+            type: string
+            enum: [active, completed, error]
+        - name: agent_id
+          in: query
+          required: false
+          description: Filter by agent ID
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          required: false
+          description: Filter by user ID
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          description: |
+            Sort order. Prefix with `-` for descending.
+            Example: `-started_at` (newest first)
+          schema:
+            type: string
+            enum: [started_at, -started_at, duration, -duration]
+            default: -started_at
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: cursor
+          in: query
+          required: false
+          description: Pagination cursor from previous response
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/{session_id}:
+    get:
+      operationId: getSession
+      summary: Get session details
+      description: |
+        Returns detailed information for a specific session.
+        
+        - Includes session metrics summary
+        - Includes client info and timeline metadata
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+      tags:
+        - Sessions
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Session ID (format: sess_XXXXXXXXXXXXXXXXXXXX)
+          schema:
+            type: string
+            pattern: '^sess_[a-zA-Z0-9]{20,30}$'
+      responses:
+        '200':
+          description: Session details retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ====================
+  # API Keys API
+  # ====================
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      description: |
+        Returns all API keys for the current organization.
+        
+        - Only key prefix is returned (not the full key)
+        - Includes usage metadata
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+        **Required Role:** admin or manager
+      tags:
+        - API Keys
+      responses:
+        '200':
+          description: API keys retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createApiKey
+      summary: Create API key
+      description: |
+        Creates a new API key for agent SDK authentication.
+        
+        - The full key and secret are only returned once in this response
+        - Store them securely; they cannot be retrieved again
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+        **Required Role:** admin
+      tags:
+        - API Keys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+            examples:
+              productionKey:
+                summary: Production API key
+                value:
+                  name: "Production Agent SDK"
+                  scopes:
+                    - "events:write"
+                  environment: "production"
+              stagingKey:
+                summary: Staging API key with expiration
+                value:
+                  name: "Staging Agent SDK"
+                  scopes:
+                    - "events:write"
+                  environment: "staging"
+                  expires_at: "2026-12-09T00:00:00Z"
+      responses:
+        '201':
+          description: API key created successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiKeyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ====================
+  # Organizations API
+  # ====================
+  /organizations/current:
+    get:
+      operationId: getCurrentOrganization
+      summary: Get current organization
+      description: |
+        Returns details for the authenticated user's organization.
+        
+        - Includes plan information and quota usage
+        
+        **Authentication:** JWT Bearer token required (dashboard users)
+      tags:
+        - Organizations
+      responses:
+        '200':
+          description: Organization details retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  # ====================
+  # Security Schemes
+  # ====================
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtained via OAuth 2.0/OIDC flow.
+        
+        Token payload includes:
+        - `sub`: User ID
+        - `custom:org_id`: Organization ID
+        - `custom:org_role`: User's role in organization
+        - `scope`: Authorized scopes
+        
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for agent SDK authentication.
+        
+        Additional required headers:
+        - `X-Timestamp`: Unix timestamp in milliseconds
+        - `X-Signature`: HMAC-SHA256 signature of request
+
+  # ====================
+  # Response Headers
+  # ====================
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum requests allowed per time window
+      schema:
+        type: integer
+        example: 1000
+    X-RateLimit-Remaining:
+      description: Remaining requests in current window
+      schema:
+        type: integer
+        example: 847
+    X-RateLimit-Reset:
+      description: Unix timestamp when rate limit resets
+      schema:
+        type: integer
+        example: 1703152260
+
+  # ====================
+  # Reusable Responses
+  # ====================
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "VAL_INVALID_FORMAT"
+              message: "Invalid query parameter format"
+              details:
+                field: "period"
+                received: "invalid"
+                allowed: ["1d", "7d", "30d", "90d"]
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "AUTH_TOKEN_INVALID"
+              message: "Invalid or expired access token"
+              documentation_url: "https://docs.example.com/auth"
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "AUTHZ_ROLE_REQUIRED"
+              message: "This operation requires admin role"
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "RES_NOT_FOUND"
+              message: "Session not found"
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    ValidationError:
+      description: Validation error - request body invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "VAL_INVALID_FORMAT"
+              message: "Validation failed"
+              details:
+                errors:
+                  - field: "events[0].timestamp"
+                    message: "Must be valid ISO 8601 datetime"
+                    received: "2025-13-45"
+                  - field: "events[0].event_type"
+                    message: "Must be one of allowed values"
+                    received: "invalid_type"
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 30
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/X-RateLimit-Remaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Rate limit exceeded. Retry after 30 seconds."
+              details:
+                limit: 1000
+                remaining: 0
+                reset_at: "2025-12-09T10:31:00Z"
+                retry_after: 30
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "SRV_INTERNAL_ERROR"
+              message: "An unexpected error occurred. Please try again."
+            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+  # ====================
+  # Schemas
+  # ====================
+  schemas:
+    # --------------------
+    # Common
+    # --------------------
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - request_id
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: "VAL_INVALID_FORMAT"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Validation failed"
+            details:
+              type: object
+              description: Additional error context
+              additionalProperties: true
+            field:
+              type: string
+              description: Field that caused the error (for validation)
+            documentation_url:
+              type: string
+              format: uri
+              description: Link to relevant documentation
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+          example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    Pagination:
+      type: object
+      required:
+        - has_more
+      properties:
+        cursor:
+          type: string
+          nullable: true
+          description: Cursor for next page (null if no more results)
+          example: "eyJsYXN0X2lkIjoic2Vzc18wMUhHWDVWQkpYMlE4SllYTVZRWlJLMTIzNCJ9"
+        has_more:
+          type: boolean
+          description: Whether more results are available
+          example: true
+        total_estimate:
+          type: integer
+          description: Estimated total count (may be approximate for large datasets)
+          example: 1247
+
+    Period:
+      type: object
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Period start time (ISO 8601)
+          example: "2025-12-02T00:00:00Z"
+        end:
+          type: string
+          format: date-time
+          description: Period end time (ISO 8601)
+          example: "2025-12-09T00:00:00Z"
+        granularity:
+          type: string
+          enum: [hour, day, week]
+          description: Data granularity
+          example: "day"
+
+    # --------------------
+    # Health
+    # --------------------
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-12-09T10:30:00Z"
+        version:
+          type: string
+          description: API version
+          example: "1.0.0"
+        services:
+          type: object
+          description: Individual service health status
+          properties:
+            database:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            cache:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            analytics:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+
+    # --------------------
+    # Events
+    # --------------------
+    Event:
+      type: object
+      required:
+        - event_id
+        - event_type
+        - timestamp
+        - session_id
+        - user_id
+        - agent_id
+      properties:
+        event_id:
+          type: string
+          pattern: '^evt_[a-zA-Z0-9]{20,30}$'
+          description: Unique event identifier
+          example: "evt_01HGX5VBJX2Q8JYXMVQZRK3456"
+        event_type:
+          type: string
+          enum:
+            - session_start
+            - session_end
+            - session_pause
+            - session_resume
+            - task_start
+            - task_complete
+            - task_error
+            - task_cancel
+            - tool_call
+            - tool_response
+            - error
+            - warning
+            - feedback_positive
+            - feedback_negative
+          description: Type of event
+          example: "task_complete"
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp (ISO 8601)
+          example: "2025-12-09T10:35:00.000Z"
+        session_id:
+          type: string
+          pattern: '^sess_[a-zA-Z0-9]{20,30}$'
+          description: Session this event belongs to
+          example: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+        user_id:
+          type: string
+          maxLength: 128
+          description: User who initiated the session
+          example: "user_dev_alice"
+        agent_id:
+          type: string
+          maxLength: 64
+          description: AI agent identifier
+          example: "agent_claude_code"
+        environment:
+          type: string
+          enum: [production, staging, development]
+          default: production
+          description: Deployment environment
+          example: "production"
+        metadata:
+          type: object
+          additionalProperties: true
+          description: |
+            Additional event-specific data. Common fields:
+            - `tokens_input`: Input token count
+            - `tokens_output`: Output token count
+            - `duration_ms`: Task duration in milliseconds
+            - `task_type`: Type of task performed
+            - `error_code`: Error code (for error events)
+            - `error_message`: Error message
+          example:
+            task_type: "code_generation"
+            tokens_input: 1500
+            tokens_output: 3200
+            duration_ms: 4500
+            success: true
+
+    EventBatchRequest:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/Event'
+          description: Array of events to ingest (max 1000)
+
+    EventBatchResponse:
+      type: object
+      required:
+        - accepted
+        - rejected
+        - request_id
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+          description: Number of events accepted
+          example: 2
+        rejected:
+          type: integer
+          minimum: 0
+          description: Number of events rejected
+          example: 0
+        errors:
+          type: array
+          description: Details about rejected events
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+                description: Index of rejected event in request
+              event_id:
+                type: string
+                description: Event ID if available
+              code:
+                type: string
+                description: Error code
+              message:
+                type: string
+                description: Error message
+        request_id:
+          type: string
+          description: Request identifier for debugging
+          example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    # --------------------
+    # Metrics
+    # --------------------
+    MetricValue:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: number
+          description: Current metric value
+          example: 1247
+        previous:
+          type: number
+          nullable: true
+          description: Value from previous period (when compare=true)
+          example: 1189
+        change_percent:
+          type: number
+          nullable: true
+          description: Percentage change from previous period
+          example: 4.88
+        trend:
+          type: string
+          enum: [up, down, stable]
+          nullable: true
+          description: Trend direction
+          example: "up"
+        unit:
+          type: string
+          description: Unit of measurement
+          example: "percent"
+
+    MetricsOverviewResponse:
+      type: object
+      required:
+        - period
+        - metrics
+      properties:
+        period:
+          $ref: '#/components/schemas/Period'
+        metrics:
+          type: object
+          required:
+            - active_users
+            - total_sessions
+            - success_rate
+            - total_cost
+          properties:
+            active_users:
+              $ref: '#/components/schemas/MetricValue'
+            total_sessions:
+              $ref: '#/components/schemas/MetricValue'
+            success_rate:
+              allOf:
+                - $ref: '#/components/schemas/MetricValue'
+                - type: object
+                  properties:
+                    unit:
+                      type: string
+                      example: "percent"
+            avg_session_duration:
+              allOf:
+                - $ref: '#/components/schemas/MetricValue'
+                - type: object
+                  properties:
+                    unit:
+                      type: string
+                      example: "seconds"
+            total_cost:
+              allOf:
+                - $ref: '#/components/schemas/MetricValue'
+                - type: object
+                  properties:
+                    unit:
+                      type: string
+                      example: "usd"
+            error_count:
+              $ref: '#/components/schemas/MetricValue'
+        meta:
+          type: object
+          properties:
+            cache_hit:
+              type: boolean
+              description: Whether response was served from cache
+              example: true
+            cache_ttl:
+              type: integer
+              description: Cache TTL in seconds
+              example: 60
+            request_id:
+              type: string
+              example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+
+    TimeseriesPoint:
+      type: object
+      required:
+        - timestamp
+        - value
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Data point timestamp
+          example: "2025-12-08T00:00:00Z"
+        value:
+          type: number
+          description: Metric value at this timestamp
+          example: 1247
+
+    MetricsTimeseriesResponse:
+      type: object
+      required:
+        - metric
+        - period
+        - granularity
+        - data
+      properties:
+        metric:
+          type: string
+          description: Metric name
+          example: "active_users"
+        period:
+          $ref: '#/components/schemas/Period'
+        granularity:
+          type: string
+          enum: [hour, day, week]
+          description: Data point granularity
+          example: "day"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeseriesPoint'
+          description: Time-series data points
+        aggregations:
+          type: object
+          description: Statistical aggregations over the period
+          properties:
+            min:
+              type: number
+              example: 1023
+            max:
+              type: number
+              example: 1312
+            avg:
+              type: number
+              example: 1167.4
+            sum:
+              type: number
+              example: 35022
+            p50:
+              type: number
+              description: 50th percentile (median)
+              example: 1156
+            p95:
+              type: number
+              description: 95th percentile
+              example: 1289
+        meta:
+          type: object
+          properties:
+            request_id:
+              type: string
+            query_time_ms:
+              type: integer
+              description: Query execution time in milliseconds
+
+    # --------------------
+    # Sessions
+    # --------------------
+    SessionSummary:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - agent_id
+        - status
+        - started_at
+      properties:
+        session_id:
+          type: string
+          description: Unique session identifier
+          example: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+        user_id:
+          type: string
+          description: User who started the session
+          example: "user_dev_alice"
+        user:
+          type: object
+          description: User details (if available)
+          properties:
+            name:
+              type: string
+              example: "Alice Chen"
+            email:
+              type: string
+              format: email
+              example: "alice@example.com"
+            avatar_url:
+              type: string
+              format: uri
+        agent_id:
+          type: string
+          description: AI agent identifier
+          example: "agent_claude_code"
+        environment:
+          type: string
+          enum: [production, staging, development]
+          example: "production"
+        status:
+          type: string
+          enum: [active, completed, error]
+          description: Current session status
+          example: "active"
+        started_at:
+          type: string
+          format: date-time
+          description: Session start time
+          example: "2025-12-09T10:30:00.000Z"
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Session end time (null if active)
+          example: null
+        duration_seconds:
+          type: integer
+          nullable: true
+          description: Session duration in seconds (null if active)
+          example: null
+        metrics:
+          type: object
+          description: Session metrics summary
+          properties:
+            tasks_completed:
+              type: integer
+              example: 12
+            tasks_failed:
+              type: integer
+              example: 1
+            tokens_used:
+              type: integer
+              example: 45000
+            estimated_cost:
+              type: number
+              format: float
+              example: 0.85
+
+    SessionListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        meta:
+          type: object
+          properties:
+            request_id:
+              type: string
+
+    SessionDetailResponse:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - agent_id
+        - status
+        - started_at
+      allOf:
+        - $ref: '#/components/schemas/SessionSummary'
+        - type: object
+          properties:
+            agent:
+              type: object
+              description: Agent details
+              properties:
+                name:
+                  type: string
+                  example: "Claude Code"
+                version:
+                  type: string
+                  example: "1.2.3"
+            client_info:
+              type: object
+              description: Client environment information
+              properties:
+                ide:
+                  type: string
+                  example: "vscode"
+                ide_version:
+                  type: string
+                  example: "1.85.0"
+                os:
+                  type: string
+                  example: "macos"
+                os_version:
+                  type: string
+                  example: "14.1"
+            metrics:
+              type: object
+              description: Detailed session metrics
+              properties:
+                tasks_completed:
+                  type: integer
+                  example: 15
+                tasks_failed:
+                  type: integer
+                  example: 2
+                tasks_cancelled:
+                  type: integer
+                  example: 1
+                tokens_input:
+                  type: integer
+                  example: 25000
+                tokens_output:
+                  type: integer
+                  example: 62000
+                estimated_cost:
+                  type: number
+                  format: float
+                  example: 1.45
+                avg_task_duration_ms:
+                  type: integer
+                  example: 3200
+            timeline:
+              type: object
+              description: Timeline metadata
+              properties:
+                event_count:
+                  type: integer
+                  description: Total events in session
+                  example: 156
+                first_event:
+                  type: string
+                  format: date-time
+                  example: "2025-12-09T10:30:00.000Z"
+                last_event:
+                  type: string
+                  format: date-time
+                  example: "2025-12-09T11:15:00.000Z"
+
+    # --------------------
+    # API Keys
+    # --------------------
+    ApiKey:
+      type: object
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - created_at
+      properties:
+        id:
+          type: string
+          description: API key ID
+          example: "key_abc123"
+        name:
+          type: string
+          description: Human-readable key name
+          example: "Production Agent SDK"
+        prefix:
+          type: string
+          description: Key prefix (first 20 chars)
+          example: "ak_live_org_xyz789_k3j4"
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - events:write
+              - analytics:read
+          description: Authorized scopes
+          example: ["events:write"]
+        environment:
+          type: string
+          enum: [production, staging, development]
+          description: Target environment
+          example: "production"
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last usage timestamp
+          example: "2025-12-09T10:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-06-01T00:00:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration time (null if never expires)
+        created_by:
+          type: object
+          description: User who created the key
+          properties:
+            id:
+              type: string
+              example: "user_abc123"
+            name:
+              type: string
+              example: "Alice Chen"
+
+    ApiKeyListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKey'
+
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Human-readable key name
+          example: "Production Agent SDK"
+        scopes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - events:write
+              - analytics:read
+          description: Scopes to authorize
+          example: ["events:write"]
+        environment:
+          type: string
+          enum: [production, staging, development]
+          default: production
+          description: Target environment
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional expiration time
+
+    CreateApiKeyResponse:
+      type: object
+      required:
+        - id
+        - name
+        - key
+        - secret
+        - scopes
+        - created_at
+      properties:
+        id:
+          type: string
+          description: API key ID
+          example: "key_def456"
+        name:
+          type: string
+          description: Key name
+          example: "Staging Agent SDK"
+        key:
+          type: string
+          description: |
+            Full API key. **Store securely - cannot be retrieved again.**
+          example: "ak_test_org_xyz789_m4n5o6p7q8r9s0t1"
+        secret:
+          type: string
+          description: |
+            API secret for request signing. **Store securely - cannot be retrieved again.**
+          example: "sk_test_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["events:write"]
+        environment:
+          type: string
+          example: "staging"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-12-09T10:30:00Z"
+        _warning:
+          type: string
+          description: Security reminder
+          example: "Store the key and secret securely. They cannot be retrieved again."
+
+    # --------------------
+    # Organizations
+    # --------------------
+    OrganizationResponse:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - plan
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Organization ID
+          example: "org_xyz789"
+        name:
+          type: string
+          description: Organization display name
+          example: "Acme Corp"
+        slug:
+          type: string
+          description: URL-friendly identifier
+          example: "acme-corp"
+        plan:
+          type: string
+          enum: [free, starter, professional, enterprise]
+          description: Subscription plan
+          example: "professional"
+        status:
+          type: string
+          enum: [active, suspended, cancelled]
+          description: Account status
+          example: "active"
+        settings:
+          type: object
+          description: Organization settings
+          properties:
+            data_region:
+              type: string
+              enum: [us, eu]
+              example: "us"
+            retention_days:
+              type: integer
+              description: Data retention period
+              example: 365
+            sso_enabled:
+              type: boolean
+              example: true
+            sso_provider:
+              type: string
+              nullable: true
+              example: "okta"
+        quotas:
+          type: object
+          description: Usage quotas and limits
+          properties:
+            events_per_month:
+              type: integer
+              description: Monthly event limit
+              example: 100000000
+            events_used:
+              type: integer
+              description: Events used this month
+              example: 45678901
+            api_keys:
+              type: integer
+              description: Maximum API keys
+              example: 50
+            api_keys_used:
+              type: integer
+              description: API keys created
+              example: 12
+            users:
+              type: integer
+              description: Maximum users
+              example: 100
+            users_active:
+              type: integer
+              description: Active users
+              example: 47
+        created_at:
+          type: string
+          format: date-time
+          description: Organization creation date
+          example: "2025-01-15T00:00:00Z"
+
+

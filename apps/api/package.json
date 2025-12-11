@@ -1,0 +1,33 @@
+{
+	"name": "@repo/api",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "esbuild src/index.ts --bundle --platform=node --target=node20 --outdir=dist --format=esm --sourcemap",
+		"lint": "eslint src --ext .ts",
+		"type-check": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"clean": "rm -rf dist coverage .turbo"
+	},
+	"dependencies": {
+		"@hono/node-server": "^1.8.0",
+		"@hono/zod-validator": "^0.4.0",
+		"hono": "^4.0.0",
+		"zod": "^3.22.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.10.0",
+		"esbuild": "^0.19.0",
+		"eslint": "^8.56.0",
+		"tsx": "^4.7.0",
+		"typescript": "^5.3.0",
+		"vitest": "^1.2.0"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

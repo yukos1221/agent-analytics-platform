@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Turborepo
+.turbo
+
+# Next.js
+.next
+out
+
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Testing
+coverage
+playwright-report
+test-results
+
+# Environment files (contain secrets!)
+.env
+.env.local
+.env.*.local
+
+# IDE / Editor
+.cursor
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Drizzle
+packages/database/drizzle
+
+# Misc
+*.tgz
+.cache
