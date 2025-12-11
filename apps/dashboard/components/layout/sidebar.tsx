@@ -25,21 +25,19 @@ export function Sidebar() {
 	const pathname = usePathname();
 
 	return (
-		<aside className="flex w-64 flex-col border-r border-gray-200 bg-white">
+		<aside className='flex w-64 flex-col border-r border-gray-200 bg-white'>
 			{/* Logo */}
-			<div className="flex h-16 items-center border-b border-gray-200 px-6">
-				<Link href="/dashboard" className="flex items-center space-x-2">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-						<BarChart3 className="h-5 w-5 text-white" />
+			<div className='flex h-16 items-center border-b border-gray-200 px-6'>
+				<Link href='/dashboard' className='flex items-center space-x-2'>
+					<div className='flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600'>
+						<BarChart3 className='h-5 w-5 text-white' />
 					</div>
-					<span className="text-lg font-semibold text-gray-900">
-						Analytics
-					</span>
+					<span className='text-lg font-semibold text-gray-900'>Analytics</span>
 				</Link>
 			</div>
 
 			{/* Navigation */}
-			<nav className="flex-1 space-y-1 px-3 py-4">
+			<nav className='flex-1 space-y-1 px-3 py-4'>
 				{navigation.map((item) => {
 					const isActive =
 						pathname === item.href ||
@@ -71,13 +69,11 @@ export function Sidebar() {
 			</nav>
 
 			{/* Footer */}
-			<div className="border-t border-gray-200 p-4">
-				<div className="rounded-md bg-gray-50 p-3">
-					<p className="text-xs font-medium text-gray-500">Current Plan</p>
-					<p className="text-sm font-semibold text-gray-900">Pro Team</p>
-					<p className="mt-1 text-xs text-gray-500">
-						1,247 / 10,000 sessions
-					</p>
+			<div className='border-t border-gray-200 p-4'>
+				<div className='rounded-md bg-gray-50 p-3'>
+					<p className='text-xs font-medium text-gray-500'>Current Plan</p>
+					<p className='text-sm font-semibold text-gray-900'>Pro Team</p>
+					<p className='mt-1 text-xs text-gray-500'>1,247 / 10,000 sessions</p>
 				</div>
 			</div>
 		</aside>

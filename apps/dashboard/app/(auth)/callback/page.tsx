@@ -27,9 +27,9 @@ export default function CallbackPage() {
 	}, [router, searchParams]);
 
 	return (
-		<div className="flex flex-col items-center justify-center p-8">
-			<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
-			<p className="mt-4 text-sm text-gray-600">Completing sign in...</p>
+		<div className='flex flex-col items-center justify-center p-8'>
+			<div className='h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent' />
+			<p className='mt-4 text-sm text-gray-600'>Completing sign in...</p>
 		</div>
 	);
 }
