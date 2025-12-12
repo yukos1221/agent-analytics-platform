@@ -8,6 +8,9 @@ import * as path from 'path';
  * Tool: Playwright 1.40.x
  */
 export default defineConfig({
+	// Use TypeScript for config and setup files
+	// Playwright will handle ES modules automatically
+
 	// Test directory
 	testDir: './tests/e2e',
 
@@ -86,7 +89,7 @@ export default defineConfig({
 			timeout: 120 * 1000,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			cwd: path.resolve(__dirname, '../../'),
+			cwd: path.resolve(process.cwd(), '../../'),
 		},
 		// Dashboard server
 		{
@@ -100,5 +103,6 @@ export default defineConfig({
 	],
 
 	// Global setup: Seed database before running tests
+	// Use relative path - Playwright resolves from config file location
 	globalSetup: './tests/setup-e2e.ts',
 });

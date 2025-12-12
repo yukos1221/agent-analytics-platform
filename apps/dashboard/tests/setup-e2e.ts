@@ -10,10 +10,9 @@
 
 import { execSync } from 'child_process';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Use process.cwd() for repo root (Playwright runs from dashboard directory)
+// This works in both CommonJS and ES module contexts
 
 async function globalSetup() {
 	console.log('🌱 Setting up E2E test environment...');
@@ -28,7 +27,8 @@ async function globalSetup() {
 		}
 
 		// Resolve repo root once for all commands
-		const repoRoot = path.resolve(__dirname, '../../../');
+		// Playwright runs from apps/dashboard, so go up 2 levels to repo root
+		const repoRoot = path.resolve(process.cwd(), '../../');
 
 		// Run database migrations (if needed)
 		console.log('📦 Running database migrations...');
