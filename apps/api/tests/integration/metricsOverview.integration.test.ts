@@ -18,6 +18,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import app from '../../src/app';
 import { eventStore } from '../../src/services';
+import { _clearMetricsCache } from '../../src/lib/cache/metricsCache';
 import {
 	API_KEYS,
 	createEvent,
@@ -156,10 +157,12 @@ function createSessionEvents(
 describe('Metrics Overview Integration', () => {
 	beforeEach(() => {
 		eventStore.clear();
+		_clearMetricsCache();
 	});
 
 	afterEach(() => {
 		eventStore.clear();
+		_clearMetricsCache();
 	});
 
 	// ===========================================================================

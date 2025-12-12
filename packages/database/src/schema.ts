@@ -1,7 +1,6 @@
 import {
 	pgTable,
 	varchar,
-	text,
 	timestamp,
 	integer,
 	jsonb,
@@ -39,7 +38,7 @@ export const events_raw = pgTable('events_raw', {
 	environment: varchar('environment', { length: 32 })
 		.notNull()
 		.default('production'),
-	metadata: jsonb('metadata').$type<any>(),
+	metadata: jsonb('metadata').$type<Record<string, unknown>>(),
 	ingested_at: timestamp('ingested_at').defaultNow().notNull(),
 });
 
@@ -53,7 +52,3 @@ export const api_keys = pgTable('api_keys', {
 	status: varchar('status', { length: 16 }).notNull().default('active'),
 	created_at: timestamp('created_at').defaultNow().notNull(),
 });
-
-export type {};
-// Drizzle ORM schema definitions
-export {};

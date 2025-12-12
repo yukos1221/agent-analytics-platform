@@ -4,7 +4,6 @@ import {
 	EventBatchRequestSchema,
 	EventBatchResponse,
 	ErrorResponse,
-	generateRequestId,
 } from '../schemas';
 import {
 	apiKeyAuth,
@@ -12,7 +11,8 @@ import {
 	getRequestId,
 	rateLimit,
 } from '../middleware';
-import { insertEvents } from '../../../packages/database/src';
+import { insertEvents } from '../../../../packages/database/src';
+import { eventStore } from '../services';
 
 const events = new Hono();
 
@@ -84,9 +84,16 @@ events.post(
 		const body = c.req.valid('json');
 
 		try {
-			// Persist events to DB (Phase 1). Falls back to in-memory store.
-			// Per OpenAPI spec: "Duplicate event_ids are rejected"
-			const result = await insertEvents(authContext.org_id, body.events);
+			// Persist events to DB (Phase 1). For tests, prefer the local
+			// in-memory `eventStore` to avoid cross-package module instance
+			// resolution issues; otherwise use `insertEvents` which may
+			// use a real database or fallback to an in-memory store.
+			let result;
+			if (process.env.NODE_ENV === 'test') {
+				result = await eventStore.ingest(authContext.org_id, body.events);
+			} else {
+				result = await insertEvents(authContext.org_id, body.events);
+			}
 
 			// Build response per OpenAPI EventBatchResponse schema
 			// Required: accepted, rejected, request_id

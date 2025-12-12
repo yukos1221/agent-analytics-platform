@@ -81,7 +81,11 @@ metrics.get('/overview', async (c) => {
 		const orgId = auth?.org_id || 'org_default';
 
 		// Compute metrics (with caching)
-		const ttlMs = Number(process.env.METRICS_CACHE_TTL_MS || '300000'); // default 5 minutes
+		// Cache TTL should match Cache-Control max-age (60 seconds)
+		// Allow override via env var for testing
+		const cacheTtlSeconds =
+			Number(process.env.METRICS_CACHE_TTL_MS || '60000') / 1000;
+		const ttlMs = cacheTtlSeconds * 1000;
 		const cacheKey = `metrics:${orgId}:period=${period}:compare=${compareParam}`;
 
 		const { value: metricsData, cacheHit } = await getOrSetCachedMetrics(
@@ -96,7 +100,7 @@ metrics.get('/overview', async (c) => {
 			metrics: metricsData.metrics,
 			meta: {
 				cache_hit: cacheHit,
-				cache_ttl: Math.floor(ttlMs / 1000),
+				cache_ttl: cacheTtlSeconds,
 				request_id: requestId,
 			},
 		};

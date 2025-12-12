@@ -8,8 +8,8 @@
  * identical so swapping the implementation is straightforward.
  */
 
-type CacheEntry = {
-	value: any;
+type CacheEntry<T = unknown> = {
+	value: T;
 	expiresAt: number;
 };
 
@@ -27,7 +27,7 @@ export async function getOrSetCachedMetrics<T>(
 	}
 
 	const value = await fetchFn();
-	store.set(key, { value, expiresAt: now + ttlMs });
+	store.set(key, { value, expiresAt: now + ttlMs } as CacheEntry);
 	return { value, cacheHit: false };
 }
 
@@ -36,8 +36,8 @@ export function _clearMetricsCache(): void {
 	store.clear();
 }
 
-export function _setMetricsCache(key: string, value: any, ttlMs: number): void {
-	store.set(key, { value, expiresAt: Date.now() + ttlMs });
+export function _setMetricsCache<T>(key: string, value: T, ttlMs: number): void {
+	store.set(key, { value, expiresAt: Date.now() + ttlMs } as CacheEntry);
 }
 
 // Expose store for introspection in tests (avoid in prod)

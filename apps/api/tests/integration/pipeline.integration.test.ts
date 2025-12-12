@@ -13,20 +13,20 @@
  */
 
 import { beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
-import app from '../../../src/app';
-import { createTestServer } from '../../helpers/http-client';
+import app from '../../src/app';
+import { createTestServer } from '../helpers/http-client';
 import {
 	API_KEYS,
 	generateEventId,
 	generateSessionId,
-} from '../../fixtures/events';
+} from '../fixtures/events';
 import {
 	_setInMemoryApiKey,
 	_clearInMemoryApiKeys,
-} from '../../../src/middleware';
-import { _clearMetricsCache } from '../../../src/lib/cache/metricsCache';
-import { eventStore } from '../../../src/services';
-import { computeMetricsOverview } from '../../../src/services/metricsOverviewService';
+} from '../../src/middleware';
+import { _clearMetricsCache } from '../../src/lib/cache/metricsCache';
+import { eventStore } from '../../src/services';
+import * as metricsSvc from '../../src/services/metricsOverviewService';
 import crypto from 'crypto';
 
 function toB64Url(obj: any) {
@@ -58,7 +58,9 @@ function createSessionEventsForTest(
 	opts: { hasError?: boolean } = {}
 ) {
 	const sessionId = generateSessionId();
-	const base = new Date();
+	// Use a base timestamp slightly in the past so follow-up events (task, end)
+	// are not in the future relative to the metrics query time.
+	const base = new Date(Date.now() - 120_000); // 2 minutes ago
 	const events: any[] = [
 		{
 			event_id: generateEventId(),
@@ -103,7 +105,7 @@ function createSessionEventsForTest(
 	events.push({
 		event_id: generateEventId(),
 		event_type: 'session_end',
-		timestamp: new Date(base.getTime() + 180_000).toISOString(),
+		timestamp: new Date(base.getTime() + 90_000).toISOString(), // 90 seconds after base (still 30 seconds ago)
 		session_id: sessionId,
 		user_id: userId,
 		agent_id: 'agent_test',
@@ -144,6 +146,15 @@ describe('Pipeline Integration: ingestion -> metrics', () => {
 
 		await server.start();
 		client = server.client();
+
+		// Debug: environment during test
+		// eslint-disable-next-line no-console
+		console.log(
+			'TEST ENV:',
+			process.env.NODE_ENV,
+			'DATABASE_URL set?',
+			!!process.env.DATABASE_URL
+		);
 	});
 
 	afterAll(async () => {
@@ -166,10 +177,16 @@ describe('Pipeline Integration: ingestion -> metrics', () => {
 			{ 'X-API-Key': API_KEYS.ORG_A }
 		);
 		expect(postRes.status).toBe(202);
+		// Debug: log ingestion response and stored events
+		// eslint-disable-next-line no-console
+		console.log('POST /v1/events response:', postRes.status, postRes.body);
 		// accepted should equal number of events
 		expect(postRes.body.accepted).toBe(events.length);
 
-		// Now call metrics for org_pipeline via JWT
+		// Clear cache to ensure fresh metrics computation
+		_clearMetricsCache();
+
+		// Now call metrics for org_pipeline (same org as API key mapping) via JWT
 		const token = makeHs256Token(
 			{ org_id: 'org_pipeline', sub: 'tester' },
 			'test-secret'
@@ -178,6 +195,12 @@ describe('Pipeline Integration: ingestion -> metrics', () => {
 			Authorization: `Bearer ${token}`,
 		});
 		expect(getRes.status).toBe(200);
+		// Debug: log stored events for org_pipeline
+		// eslint-disable-next-line no-console
+		console.log(
+			'Stored events for org_pipeline:',
+			eventStore.getByOrg('org_pipeline').length
+		);
 
 		const metrics = (getRes.body as any).metrics;
 		expect(metrics.active_users.value).toBe(2); // two unique users
@@ -187,21 +210,21 @@ describe('Pipeline Integration: ingestion -> metrics', () => {
 	});
 
 	it('multi-tenant isolation: events from other orgs do not affect metrics', async () => {
-		// Seed events for org_pipeline
+		// Seed events for org_pipeline (ORG_A maps to org_pipeline)
 		await client.post(
 			'/v1/events',
 			{ events: createSessionEventsForTest('user_x') },
 			{ 'X-API-Key': API_KEYS.ORG_A }
 		);
 
-		// Seed events for org_other_pipeline
+		// Seed events for org_other_pipeline (ORG_B maps to org_other_pipeline)
 		await client.post(
 			'/v1/events',
 			{ events: createSessionEventsForTest('user_y') },
 			{ 'X-API-Key': API_KEYS.ORG_B }
 		);
 
-		// Query metrics for org_pipeline only
+		// Query metrics for org_pipeline only (should not see org_other_pipeline events)
 		const token = makeHs256Token(
 			{ org_id: 'org_pipeline', sub: 'tester' },
 			'test-secret'
@@ -211,16 +234,13 @@ describe('Pipeline Integration: ingestion -> metrics', () => {
 		});
 		expect(res.status).toBe(200);
 		const metrics = (res.body as any).metrics;
-		// Should only include events from org_pipeline (user_x)
+		// Should only include events from org_pipeline (user_x), not org_other_pipeline (user_y)
 		expect(metrics.active_users.value).toBe(1);
 	});
 
 	it('metrics route uses cache: computeMetricsOverview called once on repeat requests (spy)', async () => {
 		// Use spy to count compute invocations
-		const spy = vi.spyOn(
-			require('../../../src/services/metricsOverviewService'),
-			'computeMetricsOverview'
-		);
+		const spy = vi.spyOn(metricsSvc, 'computeMetricsOverview');
 
 		// Ingest a sample event directly into store for org_cache_test
 		await eventStore.ingest(

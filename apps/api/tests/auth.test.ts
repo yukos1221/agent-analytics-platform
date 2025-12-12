@@ -7,6 +7,7 @@ import {
 } from '../src/middleware';
 
 import crypto from 'crypto';
+import { createEvent } from './fixtures/events';
 
 function base64url(input: string) {
 	return Buffer.from(input)
@@ -77,16 +78,8 @@ describe('Auth and API key behavior (MVP)', () => {
 	});
 
 	it('API key valid allows POST /v1/events', async () => {
-		// craft a valid event
-		const event = {
-			event_id: 'evt_abcdefghijklmnopqrst',
-			event_type: 'session_start',
-			timestamp: new Date().toISOString(),
-			session_id: 'sess_abcdefghijklmnopqr',
-			user_id: 'user_test',
-			agent_id: 'agent_claude_code',
-			environment: 'production',
-		};
+		// craft a valid event using shared fixtures to match schema
+		const event = createEvent({ event_type: 'session_start' });
 
 		const res = await app.fetch(
 			new Request('http://localhost/v1/events', {
@@ -115,15 +108,7 @@ describe('Auth and API key behavior (MVP)', () => {
 			status: 'revoked',
 		});
 
-		const event = {
-			event_id: 'evt_abcdefghijklmnopqr1',
-			event_type: 'session_start',
-			timestamp: new Date().toISOString(),
-			session_id: 'sess_abcdefghijklmnopq1',
-			user_id: 'user_test',
-			agent_id: 'agent_claude_code',
-			environment: 'production',
-		};
+		const event = createEvent({ event_type: 'session_start' });
 
 		const res = await app.fetch(
 			new Request('http://localhost/v1/events', {

@@ -144,6 +144,16 @@ class InMemoryEventStore {
 // TODO: Replace with database repository when implementing Postgres storage
 export const eventStore = new InMemoryEventStore();
 
+// Expose the in-memory store on globalThis to allow packages outside the
+// app (e.g., packages/database) to access the same singleton instance
+// when running in test or local dev environments where modules may be
+// loaded via different resolution strategies (CJS/ESM/Vite).
+(
+	globalThis as typeof globalThis & {
+		__IN_MEMORY_EVENT_STORE?: typeof eventStore;
+	}
+).__IN_MEMORY_EVENT_STORE = eventStore;
+
 // Re-export metrics service
 export { computeMetricsOverview } from './metricsOverviewService';
 export type { MetricsOverviewData } from './metricsOverviewService';

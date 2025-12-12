@@ -21,9 +21,8 @@
 import { eventStore, type StoredEvent } from './index';
 import {
 	queryEventsByOrgRange,
-	querySessionsByOrgRange,
 	aggregateTokensByOrgRange,
-} from '../../../packages/database/src';
+} from '../../../../packages/database/src';
 import type { MetricValue, Trend, PeriodQuery } from '../schemas';
 
 /**
@@ -182,6 +181,7 @@ function countSessions(events: StoredEvent[]): number {
  *
  * A session is considered successful if it has a 'session_end' event and no 'error' events
  * A session is considered failed if it has 'task_error' or 'error' events
+ * Incomplete sessions (no session_end) are counted in denominator but not as successful
  */
 function calculateSuccessRate(events: StoredEvent[]): number {
 	const sessionMap = new Map<string, { hasEnd: boolean; hasError: boolean }>();
@@ -202,10 +202,13 @@ function calculateSuccessRate(events: StoredEvent[]): number {
 		sessionMap.set(event.session_id, session);
 	}
 
-	if (sessionMap.size === 0) {
+	const totalSessions = sessionMap.size;
+
+	if (totalSessions === 0) {
 		return 100; // No sessions = 100% success rate (no failures)
 	}
 
+	// Count successful sessions (completed without errors)
 	let successfulSessions = 0;
 	for (const session of sessionMap.values()) {
 		// A session is successful if it ended without errors
@@ -214,7 +217,7 @@ function calculateSuccessRate(events: StoredEvent[]): number {
 		}
 	}
 
-	return Number(((successfulSessions / sessionMap.size) * 100).toFixed(1));
+	return Number(((successfulSessions / totalSessions) * 100).toFixed(1));
 }
 
 /**
@@ -335,9 +338,14 @@ export async function computeMetricsOverview(
 		config.startDate,
 		config.endDate
 	);
-	if (eventsRows && Array.isArray(eventsRows)) {
+	if (
+		eventsRows !== null &&
+		Array.isArray(eventsRows) &&
+		eventsRows.length > 0
+	) {
+		// Database is configured and returned events
 		allEvents = eventsRows.map(
-			(r: any) =>
+			(r) =>
 				({
 					event_id: r.event_id,
 					org_id: r.org_id,
@@ -359,11 +367,17 @@ export async function computeMetricsOverview(
 				} as StoredEvent)
 		);
 	} else {
-		// No DB configured: fallback to in-memory event store for the org
+		// No DB configured or DB returned no results: fallback to in-memory event store for the org
 		allEvents = eventStore.getByOrg(orgId);
 	}
-	// Filter events by current period (already queried for current period)
-	const currentEvents = allEvents;
+	// Filter events by current period. If DB query returned rows they
+	// should already be constrained by date, but when falling back to the
+	// in-memory store we must apply the period filter explicitly.
+	const currentEvents = filterEventsByDateRange(
+		allEvents,
+		config.startDate,
+		config.endDate
+	);
 
 	// For previous period, try DB query first
 	let previousEvents: StoredEvent[] = [];
@@ -373,9 +387,10 @@ export async function computeMetricsOverview(
 			config.previousStartDate,
 			config.previousEndDate
 		);
-		if (prevRows && Array.isArray(prevRows)) {
+		if (prevRows !== null && Array.isArray(prevRows) && prevRows.length > 0) {
+			// Database is configured and returned events
 			previousEvents = prevRows.map(
-				(r: any) =>
+				(r) =>
 					({
 						event_id: r.event_id,
 						org_id: r.org_id,

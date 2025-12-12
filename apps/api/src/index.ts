@@ -19,9 +19,13 @@ serve(
 		port,
 	},
 	(info) => {
+		// eslint-disable-next-line no-console
 		console.log(`🚀 API server running at http://localhost:${info.port}`);
+		// eslint-disable-next-line no-console
 		console.log(`   Health: http://localhost:${info.port}/health`);
+		// eslint-disable-next-line no-console
 		console.log(`   Events: http://localhost:${info.port}/v1/events`);
+		// eslint-disable-next-line no-console
 		console.log(
 			`   Metrics: http://localhost:${info.port}/v1/metrics/overview`
 		);

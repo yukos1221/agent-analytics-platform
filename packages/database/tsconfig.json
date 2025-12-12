@@ -10,8 +10,10 @@
 		"declaration": true,
 		"declarationMap": true,
 		"outDir": "./dist",
-		"rootDir": "./src"
+		"paths": {
+			"@repo/shared": ["../shared/src"]
+		}
 	},
 	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist"]
+	"exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

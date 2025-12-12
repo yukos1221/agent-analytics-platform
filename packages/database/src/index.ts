@@ -1,13 +1,34 @@
 // Database helper for runtime usage (simple, falls back to in-memory for local dev)
 import postgres from 'postgres';
-import type { Event } from '../../../apps/api/src/schemas/events';
+import type { Event } from '@repo/shared';
 
 export * from './schema';
 
-let sql: ReturnType<typeof postgres> | null = null;
+type InMemoryEventStore = {
+	size?: number;
+	ingest: (
+		orgId: string,
+		events: Event[]
+	) => Promise<{
+		accepted: number;
+		rejected: number;
+		errors: Array<{
+			index: number;
+			event_id: string;
+			code: string;
+			message: string;
+		}>;
+	}>;
+};
+type SqlClient = ReturnType<typeof postgres>;
+
+let sql: SqlClient | null = null;
 
 function getSql() {
 	if (sql) return sql;
+	// During tests prefer the in-memory store to avoid relying on external DB
+	if (process.env.NODE_ENV === 'test') return null;
+
 	const url = process.env.DATABASE_URL;
 	if (!url) return null;
 	sql = postgres(url, { max: 2 });
@@ -15,15 +36,26 @@ function getSql() {
 }
 
 // Try to use apps/api in-memory event store as fallback when no DB configured
-function getInMemoryEventStore() {
+async function getInMemoryEventStore(): Promise<InMemoryEventStore | null> {
+	// If the app has exposed a global in-memory store, use it first
 	try {
-		// relative path from packages/database/src to apps/api/src/services
-		// ../../../apps/api/src/services
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		const svc =
-			require('../../../apps/api/src/services') as typeof import('../../../apps/api/src/services');
-		return svc.eventStore;
-	} catch (e) {
+		const globalStore = (globalThis as Record<string, unknown>)
+			.__IN_MEMORY_EVENT_STORE as InMemoryEventStore | undefined;
+		if (globalStore) return Promise.resolve(globalStore);
+	} catch {
+		// ignore
+	}
+	try {
+		// Prefer dynamic ESM import which is more likely to return the same
+		// module instance under Vite / Vitest. Fall back to CommonJS require
+		// for environments that only support CJS.
+		// Using dynamic import with string variable to avoid TypeScript path resolution issues
+		// This is a runtime fallback and should not be type-checked
+		const importPath = '../../../apps/api/src/services';
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const mod = (await import(importPath)) as Record<string, unknown>;
+		return mod.eventStore as InMemoryEventStore;
+	} catch {
 		return null;
 	}
 }
@@ -74,7 +106,7 @@ export async function aggregateTokensByOrgRange(
 	end: Date
 ) {
 	const db = getSql();
-	if (!db) return { tokens_input: 0, tokens_output: 0 };
+	if (!db) return null;
 
 	const rows = await db`
 		SELECT
@@ -91,20 +123,40 @@ export async function aggregateTokensByOrgRange(
 	};
 }
 
+interface InsertError {
+	index: number;
+	event_id: string;
+	code: string;
+	message: string;
+}
+
 export async function insertEvents(orgId: string, events: Event[]) {
 	const db = getSql();
 	if (!db) {
 		// Fallback to in-memory event store used in apps/api
-		const store = getInMemoryEventStore();
+		const store = await getInMemoryEventStore();
 		if (!store) {
 			throw new Error('No database configured and in-memory store unavailable');
+		}
+		// Debug logging to help test diagnostics
+		try {
+			// eslint-disable-next-line no-console
+			console.log(
+				'Using in-memory event store for ingestion. store.size=',
+				store.size,
+				'global store?',
+				!!(globalThis as Record<string, unknown>).__IN_MEMORY_EVENT_STORE
+			);
+		} catch (e: unknown) {
+			// Log error silently
+			void e;
 		}
 		return store.ingest(orgId, events);
 	}
 
 	let accepted: number = 0;
 	let rejected: number = 0;
-	const errors: Array<any> = [];
+	const errors: InsertError[] = [];
 
 	// Insert events one by one to report duplicates per event
 	for (let i = 0; i < events.length; i++) {
@@ -114,13 +166,14 @@ export async function insertEvents(orgId: string, events: Event[]) {
 				ev.event_id
 			}, ${orgId}, ${ev.session_id}, ${ev.user_id}, ${ev.agent_id}, ${
 				ev.event_type
-			}, ${new Date(ev.timestamp)}, ${ev.environment || 'production'}, ${
-				ev.metadata || {}
-			})`;
+			}, ${new Date(ev.timestamp)}, ${
+				ev.environment || 'production'
+			}, ${JSON.stringify(ev.metadata || {})}::jsonb)`;
 			accepted++;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const error = err as Record<string, unknown> & { code?: string };
 			// Postgres unique violation code 23505 -> duplicate
-			if (err && err.code === '23505') {
+			if (error && error.code === '23505') {
 				rejected++;
 				errors.push({
 					index: i,
