@@ -3,17 +3,17 @@ info:
   title: AI Agent Analytics Platform API
   description: |
     API for ingesting, querying, and visualizing analytics data from AI coding agents.
-    
+
     ## Authentication
-    
+
     The API supports two authentication methods:
-    
+
     ### JWT Bearer Token (Dashboard Users)
     Used by dashboard applications. Obtain tokens via OAuth 2.0/OIDC flow with Cognito.
     ```
     Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
     ```
-    
+
     ### API Key (Agent SDK / M2M)
     Used by agent SDKs for event ingestion. Include key and signature headers.
     ```
@@ -21,18 +21,18 @@ info:
     X-Timestamp: 1703000700000
     X-Signature: a1b2c3d4e5f6...
     ```
-    
+
     ## Rate Limiting
-    
+
     All endpoints are rate limited. Check response headers:
     - `X-RateLimit-Limit`: Requests allowed per window
     - `X-RateLimit-Remaining`: Requests remaining
     - `X-RateLimit-Reset`: Unix timestamp when limit resets
-    
+
     ## Pagination
-    
+
     List endpoints use cursor-based pagination for stable results with real-time data.
-    
+
   version: 1.0.0
   contact:
     name: API Support
@@ -101,11 +101,11 @@ paths:
       summary: Ingest analytics events
       description: |
         Batch ingest analytics events from Agent SDK.
-        
+
         - Maximum 1000 events per request
         - Events are processed asynchronously
         - Duplicate event_ids are rejected
-        
+
         **Authentication:** API Key required (agents/SDK)
       tags:
         - Events
@@ -122,26 +122,26 @@ paths:
                 summary: Session lifecycle events
                 value:
                   events:
-                    - event_id: "evt_01HGX5VBJX2Q8JYXMVQZRK3456"
-                      event_type: "session_start"
-                      timestamp: "2025-12-09T10:30:00.000Z"
-                      session_id: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
-                      user_id: "user_dev_alice"
-                      agent_id: "agent_claude_code"
-                      environment: "production"
+                    - event_id: 'evt_01HGX5VBJX2Q8JYXMVQZRK3456'
+                      event_type: 'session_start'
+                      timestamp: '2025-12-09T10:30:00.000Z'
+                      session_id: 'sess_01HGX5VBJX2Q8JYXMVQZRK1234'
+                      user_id: 'user_dev_alice'
+                      agent_id: 'agent_claude_code'
+                      environment: 'production'
                       metadata:
-                        agent_version: "1.2.3"
-                        ide: "vscode"
-                        os: "macos"
-                    - event_id: "evt_01HGX5VBJX2Q8JYXMVQZRK3457"
-                      event_type: "task_complete"
-                      timestamp: "2025-12-09T10:35:00.000Z"
-                      session_id: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
-                      user_id: "user_dev_alice"
-                      agent_id: "agent_claude_code"
-                      environment: "production"
+                        agent_version: '1.2.3'
+                        ide: 'vscode'
+                        os: 'macos'
+                    - event_id: 'evt_01HGX5VBJX2Q8JYXMVQZRK3457'
+                      event_type: 'task_complete'
+                      timestamp: '2025-12-09T10:35:00.000Z'
+                      session_id: 'sess_01HGX5VBJX2Q8JYXMVQZRK1234'
+                      user_id: 'user_dev_alice'
+                      agent_id: 'agent_claude_code'
+                      environment: 'production'
                       metadata:
-                        task_type: "code_generation"
+                        task_type: 'code_generation'
                         tokens_input: 1500
                         tokens_output: 3200
                         duration_ms: 4500
@@ -180,10 +180,10 @@ paths:
       summary: Get dashboard overview metrics
       description: |
         Returns pre-aggregated KPI metrics for the dashboard overview.
-        
+
         - Cached for 60 seconds
         - Includes period-over-period comparison when `compare=true`
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
       tags:
         - Metrics
@@ -216,7 +216,7 @@ paths:
             Cache-Control:
               schema:
                 type: string
-                example: "private, max-age=60"
+                example: 'private, max-age=60'
           content:
             application/json:
               schema:
@@ -236,10 +236,10 @@ paths:
       summary: Get time-series metrics for charts
       description: |
         Returns time-series data points for charting.
-        
+
         - Supports multiple granularities based on period
         - Includes statistical aggregations (min, max, avg, percentiles)
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
       tags:
         - Metrics
@@ -310,11 +310,11 @@ paths:
       summary: List sessions
       description: |
         Returns a paginated list of sessions with optional filters.
-        
+
         - Uses cursor-based pagination for stable results
         - Supports filtering by status, time range, and more
         - Default sort is by `started_at` descending
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
       tags:
         - Sessions
@@ -406,10 +406,10 @@ paths:
       summary: Get session details
       description: |
         Returns detailed information for a specific session.
-        
+
         - Includes session metrics summary
         - Includes client info and timeline metadata
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
       tags:
         - Sessions
@@ -417,7 +417,7 @@ paths:
         - name: session_id
           in: path
           required: true
-          description: Session ID (format: sess_XXXXXXXXXXXXXXXXXXXX)
+          description: 'Session ID (format: sess_XXXXXXXXXXXXXXXXXXXX)'
           schema:
             type: string
             pattern: '^sess_[a-zA-Z0-9]{20,30}$'
@@ -453,10 +453,10 @@ paths:
       summary: List API keys
       description: |
         Returns all API keys for the current organization.
-        
+
         - Only key prefix is returned (not the full key)
         - Includes usage metadata
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
         **Required Role:** admin or manager
       tags:
@@ -489,10 +489,10 @@ paths:
       summary: Create API key
       description: |
         Creates a new API key for agent SDK authentication.
-        
+
         - The full key and secret are only returned once in this response
         - Store them securely; they cannot be retrieved again
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
         **Required Role:** admin
       tags:
@@ -507,18 +507,18 @@ paths:
               productionKey:
                 summary: Production API key
                 value:
-                  name: "Production Agent SDK"
+                  name: 'Production Agent SDK'
                   scopes:
-                    - "events:write"
-                  environment: "production"
+                    - 'events:write'
+                  environment: 'production'
               stagingKey:
                 summary: Staging API key with expiration
                 value:
-                  name: "Staging Agent SDK"
+                  name: 'Staging Agent SDK'
                   scopes:
-                    - "events:write"
-                  environment: "staging"
-                  expires_at: "2026-12-09T00:00:00Z"
+                    - 'events:write'
+                  environment: 'staging'
+                  expires_at: '2026-12-09T00:00:00Z'
       responses:
         '201':
           description: API key created successfully
@@ -555,9 +555,9 @@ paths:
       summary: Get current organization
       description: |
         Returns details for the authenticated user's organization.
-        
+
         - Includes plan information and quota usage
-        
+
         **Authentication:** JWT Bearer token required (dashboard users)
       tags:
         - Organizations
@@ -593,20 +593,20 @@ components:
       bearerFormat: JWT
       description: |
         JWT access token obtained via OAuth 2.0/OIDC flow.
-        
+
         Token payload includes:
         - `sub`: User ID
         - `custom:org_id`: Organization ID
         - `custom:org_role`: User's role in organization
         - `scope`: Authorized scopes
-        
+
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
       description: |
         API key for agent SDK authentication.
-        
+
         Additional required headers:
         - `X-Timestamp`: Unix timestamp in milliseconds
         - `X-Signature`: HMAC-SHA256 signature of request
@@ -643,13 +643,13 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "VAL_INVALID_FORMAT"
-              message: "Invalid query parameter format"
+              code: 'VAL_INVALID_FORMAT'
+              message: 'Invalid query parameter format'
               details:
-                field: "period"
-                received: "invalid"
-                allowed: ["1d", "7d", "30d", "90d"]
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+                field: 'period'
+                received: 'invalid'
+                allowed: ['1d', '7d', '30d', '90d']
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     Unauthorized:
       description: Unauthorized - missing or invalid authentication
@@ -659,10 +659,10 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "AUTH_TOKEN_INVALID"
-              message: "Invalid or expired access token"
-              documentation_url: "https://docs.example.com/auth"
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+              code: 'AUTH_TOKEN_INVALID'
+              message: 'Invalid or expired access token'
+              documentation_url: 'https://docs.example.com/auth'
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     Forbidden:
       description: Forbidden - insufficient permissions
@@ -672,9 +672,9 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "AUTHZ_ROLE_REQUIRED"
-              message: "This operation requires admin role"
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+              code: 'AUTHZ_ROLE_REQUIRED'
+              message: 'This operation requires admin role'
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     NotFound:
       description: Resource not found
@@ -684,9 +684,9 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "RES_NOT_FOUND"
-              message: "Session not found"
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+              code: 'RES_NOT_FOUND'
+              message: 'Session not found'
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     ValidationError:
       description: Validation error - request body invalid
@@ -696,17 +696,17 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "VAL_INVALID_FORMAT"
-              message: "Validation failed"
+              code: 'VAL_INVALID_FORMAT'
+              message: 'Validation failed'
               details:
                 errors:
-                  - field: "events[0].timestamp"
-                    message: "Must be valid ISO 8601 datetime"
-                    received: "2025-13-45"
-                  - field: "events[0].event_type"
-                    message: "Must be one of allowed values"
-                    received: "invalid_type"
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+                  - field: 'events[0].timestamp'
+                    message: 'Must be valid ISO 8601 datetime'
+                    received: '2025-13-45'
+                  - field: 'events[0].event_type'
+                    message: 'Must be one of allowed values'
+                    received: 'invalid_type'
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     RateLimitExceeded:
       description: Rate limit exceeded
@@ -728,14 +728,14 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "RATE_LIMIT_EXCEEDED"
-              message: "Rate limit exceeded. Retry after 30 seconds."
+              code: 'RATE_LIMIT_EXCEEDED'
+              message: 'Rate limit exceeded. Retry after 30 seconds.'
               details:
                 limit: 1000
                 remaining: 0
-                reset_at: "2025-12-09T10:31:00Z"
+                reset_at: '2025-12-09T10:31:00Z'
                 retry_after: 30
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     InternalError:
       description: Internal server error
@@ -745,9 +745,9 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
-              code: "SRV_INTERNAL_ERROR"
-              message: "An unexpected error occurred. Please try again."
-            request_id: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+              code: 'SRV_INTERNAL_ERROR'
+              message: 'An unexpected error occurred. Please try again.'
+            request_id: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
   # ====================
   # Schemas
@@ -771,11 +771,11 @@ components:
             code:
               type: string
               description: Machine-readable error code
-              example: "VAL_INVALID_FORMAT"
+              example: 'VAL_INVALID_FORMAT'
             message:
               type: string
               description: Human-readable error message
-              example: "Validation failed"
+              example: 'Validation failed'
             details:
               type: object
               description: Additional error context
@@ -790,7 +790,7 @@ components:
         request_id:
           type: string
           description: Unique request identifier for debugging
-          example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+          example: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     Pagination:
       type: object
@@ -801,7 +801,7 @@ components:
           type: string
           nullable: true
           description: Cursor for next page (null if no more results)
-          example: "eyJsYXN0X2lkIjoic2Vzc18wMUhHWDVWQkpYMlE4SllYTVZRWlJLMTIzNCJ9"
+          example: 'eyJsYXN0X2lkIjoic2Vzc18wMUhHWDVWQkpYMlE4SllYTVZRWlJLMTIzNCJ9'
         has_more:
           type: boolean
           description: Whether more results are available
@@ -821,17 +821,17 @@ components:
           type: string
           format: date-time
           description: Period start time (ISO 8601)
-          example: "2025-12-02T00:00:00Z"
+          example: '2025-12-02T00:00:00Z'
         end:
           type: string
           format: date-time
           description: Period end time (ISO 8601)
-          example: "2025-12-09T00:00:00Z"
+          example: '2025-12-09T00:00:00Z'
         granularity:
           type: string
           enum: [hour, day, week]
           description: Data granularity
-          example: "day"
+          example: 'day'
 
     # --------------------
     # Health
@@ -845,15 +845,15 @@ components:
         status:
           type: string
           enum: [healthy, degraded, unhealthy]
-          example: "healthy"
+          example: 'healthy'
         timestamp:
           type: string
           format: date-time
-          example: "2025-12-09T10:30:00Z"
+          example: '2025-12-09T10:30:00Z'
         version:
           type: string
           description: API version
-          example: "1.0.0"
+          example: '1.0.0'
         services:
           type: object
           description: Individual service health status
@@ -885,7 +885,7 @@ components:
           type: string
           pattern: '^evt_[a-zA-Z0-9]{20,30}$'
           description: Unique event identifier
-          example: "evt_01HGX5VBJX2Q8JYXMVQZRK3456"
+          example: 'evt_01HGX5VBJX2Q8JYXMVQZRK3456'
         event_type:
           type: string
           enum:
@@ -904,33 +904,33 @@ components:
             - feedback_positive
             - feedback_negative
           description: Type of event
-          example: "task_complete"
+          example: 'task_complete'
         timestamp:
           type: string
           format: date-time
           description: Event timestamp (ISO 8601)
-          example: "2025-12-09T10:35:00.000Z"
+          example: '2025-12-09T10:35:00.000Z'
         session_id:
           type: string
           pattern: '^sess_[a-zA-Z0-9]{20,30}$'
           description: Session this event belongs to
-          example: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+          example: 'sess_01HGX5VBJX2Q8JYXMVQZRK1234'
         user_id:
           type: string
           maxLength: 128
           description: User who initiated the session
-          example: "user_dev_alice"
+          example: 'user_dev_alice'
         agent_id:
           type: string
           maxLength: 64
           description: AI agent identifier
-          example: "agent_claude_code"
+          example: 'agent_claude_code'
         environment:
           type: string
           enum: [production, staging, development]
           default: production
           description: Deployment environment
-          example: "production"
+          example: 'production'
         metadata:
           type: object
           additionalProperties: true
@@ -943,7 +943,7 @@ components:
             - `error_code`: Error code (for error events)
             - `error_message`: Error message
           example:
-            task_type: "code_generation"
+            task_type: 'code_generation'
             tokens_input: 1500
             tokens_output: 3200
             duration_ms: 4500
@@ -1000,7 +1000,7 @@ components:
         request_id:
           type: string
           description: Request identifier for debugging
-          example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+          example: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     # --------------------
     # Metrics
@@ -1029,11 +1029,11 @@ components:
           enum: [up, down, stable]
           nullable: true
           description: Trend direction
-          example: "up"
+          example: 'up'
         unit:
           type: string
           description: Unit of measurement
-          example: "percent"
+          example: 'percent'
 
     MetricsOverviewResponse:
       type: object
@@ -1062,7 +1062,7 @@ components:
                   properties:
                     unit:
                       type: string
-                      example: "percent"
+                      example: 'percent'
             avg_session_duration:
               allOf:
                 - $ref: '#/components/schemas/MetricValue'
@@ -1070,7 +1070,7 @@ components:
                   properties:
                     unit:
                       type: string
-                      example: "seconds"
+                      example: 'seconds'
             total_cost:
               allOf:
                 - $ref: '#/components/schemas/MetricValue'
@@ -1078,7 +1078,7 @@ components:
                   properties:
                     unit:
                       type: string
-                      example: "usd"
+                      example: 'usd'
             error_count:
               $ref: '#/components/schemas/MetricValue'
         meta:
@@ -1094,7 +1094,7 @@ components:
               example: 60
             request_id:
               type: string
-              example: "req_01HGX5VBJX2Q8JYXMVQZRK9999"
+              example: 'req_01HGX5VBJX2Q8JYXMVQZRK9999'
 
     TimeseriesPoint:
       type: object
@@ -1106,7 +1106,7 @@ components:
           type: string
           format: date-time
           description: Data point timestamp
-          example: "2025-12-08T00:00:00Z"
+          example: '2025-12-08T00:00:00Z'
         value:
           type: number
           description: Metric value at this timestamp
@@ -1123,14 +1123,14 @@ components:
         metric:
           type: string
           description: Metric name
-          example: "active_users"
+          example: 'active_users'
         period:
           $ref: '#/components/schemas/Period'
         granularity:
           type: string
           enum: [hour, day, week]
           description: Data point granularity
-          example: "day"
+          example: 'day'
         data:
           type: array
           items:
@@ -1184,43 +1184,43 @@ components:
         session_id:
           type: string
           description: Unique session identifier
-          example: "sess_01HGX5VBJX2Q8JYXMVQZRK1234"
+          example: 'sess_01HGX5VBJX2Q8JYXMVQZRK1234'
         user_id:
           type: string
           description: User who started the session
-          example: "user_dev_alice"
+          example: 'user_dev_alice'
         user:
           type: object
           description: User details (if available)
           properties:
             name:
               type: string
-              example: "Alice Chen"
+              example: 'Alice Chen'
             email:
               type: string
               format: email
-              example: "alice@example.com"
+              example: 'alice@example.com'
             avatar_url:
               type: string
               format: uri
         agent_id:
           type: string
           description: AI agent identifier
-          example: "agent_claude_code"
+          example: 'agent_claude_code'
         environment:
           type: string
           enum: [production, staging, development]
-          example: "production"
+          example: 'production'
         status:
           type: string
           enum: [active, completed, error]
           description: Current session status
-          example: "active"
+          example: 'active'
         started_at:
           type: string
           format: date-time
           description: Session start time
-          example: "2025-12-09T10:30:00.000Z"
+          example: '2025-12-09T10:30:00.000Z'
         ended_at:
           type: string
           format: date-time
@@ -1286,26 +1286,26 @@ components:
               properties:
                 name:
                   type: string
-                  example: "Claude Code"
+                  example: 'Claude Code'
                 version:
                   type: string
-                  example: "1.2.3"
+                  example: '1.2.3'
             client_info:
               type: object
               description: Client environment information
               properties:
                 ide:
                   type: string
-                  example: "vscode"
+                  example: 'vscode'
                 ide_version:
                   type: string
-                  example: "1.85.0"
+                  example: '1.85.0'
                 os:
                   type: string
-                  example: "macos"
+                  example: 'macos'
                 os_version:
                   type: string
-                  example: "14.1"
+                  example: '14.1'
             metrics:
               type: object
               description: Detailed session metrics
@@ -1343,11 +1343,11 @@ components:
                 first_event:
                   type: string
                   format: date-time
-                  example: "2025-12-09T10:30:00.000Z"
+                  example: '2025-12-09T10:30:00.000Z'
                 last_event:
                   type: string
                   format: date-time
-                  example: "2025-12-09T11:15:00.000Z"
+                  example: '2025-12-09T11:15:00.000Z'
 
     # --------------------
     # API Keys
@@ -1364,15 +1364,15 @@ components:
         id:
           type: string
           description: API key ID
-          example: "key_abc123"
+          example: 'key_abc123'
         name:
           type: string
           description: Human-readable key name
-          example: "Production Agent SDK"
+          example: 'Production Agent SDK'
         prefix:
           type: string
           description: Key prefix (first 20 chars)
-          example: "ak_live_org_xyz789_k3j4"
+          example: 'ak_live_org_xyz789_k3j4'
         scopes:
           type: array
           items:
@@ -1381,23 +1381,23 @@ components:
               - events:write
               - analytics:read
           description: Authorized scopes
-          example: ["events:write"]
+          example: ['events:write']
         environment:
           type: string
           enum: [production, staging, development]
           description: Target environment
-          example: "production"
+          example: 'production'
         last_used_at:
           type: string
           format: date-time
           nullable: true
           description: Last usage timestamp
-          example: "2025-12-09T10:30:00Z"
+          example: '2025-12-09T10:30:00Z'
         created_at:
           type: string
           format: date-time
           description: Creation timestamp
-          example: "2025-06-01T00:00:00Z"
+          example: '2025-06-01T00:00:00Z'
         expires_at:
           type: string
           format: date-time
@@ -1409,10 +1409,10 @@ components:
           properties:
             id:
               type: string
-              example: "user_abc123"
+              example: 'user_abc123'
             name:
               type: string
-              example: "Alice Chen"
+              example: 'Alice Chen'
 
     ApiKeyListResponse:
       type: object
@@ -1435,7 +1435,7 @@ components:
           minLength: 1
           maxLength: 100
           description: Human-readable key name
-          example: "Production Agent SDK"
+          example: 'Production Agent SDK'
         scopes:
           type: array
           minItems: 1
@@ -1445,7 +1445,7 @@ components:
               - events:write
               - analytics:read
           description: Scopes to authorize
-          example: ["events:write"]
+          example: ['events:write']
         environment:
           type: string
           enum: [production, staging, development]
@@ -1470,29 +1470,29 @@ components:
         id:
           type: string
           description: API key ID
-          example: "key_def456"
+          example: 'key_def456'
         name:
           type: string
           description: Key name
-          example: "Staging Agent SDK"
+          example: 'Staging Agent SDK'
         key:
           type: string
           description: |
             Full API key. **Store securely - cannot be retrieved again.**
-          example: "ak_test_org_xyz789_m4n5o6p7q8r9s0t1"
+          example: 'ak_test_org_xyz789_m4n5o6p7q8r9s0t1'
         secret:
           type: string
           description: |
             API secret for request signing. **Store securely - cannot be retrieved again.**
-          example: "sk_test_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+          example: 'sk_test_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6'
         scopes:
           type: array
           items:
             type: string
-          example: ["events:write"]
+          example: ['events:write']
         environment:
           type: string
-          example: "staging"
+          example: 'staging'
         expires_at:
           type: string
           format: date-time
@@ -1500,11 +1500,11 @@ components:
         created_at:
           type: string
           format: date-time
-          example: "2025-12-09T10:30:00Z"
+          example: '2025-12-09T10:30:00Z'
         _warning:
           type: string
           description: Security reminder
-          example: "Store the key and secret securely. They cannot be retrieved again."
+          example: 'Store the key and secret securely. They cannot be retrieved again.'
 
     # --------------------
     # Organizations
@@ -1522,25 +1522,25 @@ components:
         id:
           type: string
           description: Organization ID
-          example: "org_xyz789"
+          example: 'org_xyz789'
         name:
           type: string
           description: Organization display name
-          example: "Acme Corp"
+          example: 'Acme Corp'
         slug:
           type: string
           description: URL-friendly identifier
-          example: "acme-corp"
+          example: 'acme-corp'
         plan:
           type: string
           enum: [free, starter, professional, enterprise]
           description: Subscription plan
-          example: "professional"
+          example: 'professional'
         status:
           type: string
           enum: [active, suspended, cancelled]
           description: Account status
-          example: "active"
+          example: 'active'
         settings:
           type: object
           description: Organization settings
@@ -1548,7 +1548,7 @@ components:
             data_region:
               type: string
               enum: [us, eu]
-              example: "us"
+              example: 'us'
             retention_days:
               type: integer
               description: Data retention period
@@ -1559,7 +1559,7 @@ components:
             sso_provider:
               type: string
               nullable: true
-              example: "okta"
+              example: 'okta'
         quotas:
           type: object
           description: Usage quotas and limits
@@ -1592,6 +1592,4 @@ components:
           type: string
           format: date-time
           description: Organization creation date
-          example: "2025-01-15T00:00:00Z"
-
-
+          example: '2025-01-15T00:00:00Z'

@@ -1,20 +1,26 @@
-# Minimal CI Workflow for MVP (Phase 1)
+# CI Workflow for MVP (Phase 1)
 #
-# Spec Reference: docs/05-development-deployment-v1.2.md §2 & §8
+# Spec References:
+#   - docs/05-development-deployment-v1.2.md §2 & §8 (CI/CD Pipeline)
+#   - docs/06-testing-specification.md §1.5 (MVP Test Suite)
+#   - docs/07-implementation-plan.md (Phase 1 Completion Checklist)
 #
-# MVP Scope (Phase 1):
+# Phase 1 Quality Gates (Required):
 #   ✅ Lint (ESLint, Prettier)
 #   ✅ Type check (TypeScript)
-#   ✅ Unit tests (Vitest)
+#   ✅ Unit tests (Vitest) - Target: 80% coverage
+#   ✅ Contract tests (OpenAPI) - All MVP endpoints
+#   ✅ Integration tests (Critical paths)
+#   ✅ E2E tests (3 critical flows) - Required for main branch
 #   ✅ Build verification
 #
 # Deferred to Phase 2+:
-#   ❌ Integration tests (manual for MVP)
-#   ❌ E2E tests (manual for MVP)
 #   ❌ Preview deployments
-#   ❌ Code coverage upload
+#   ❌ Code coverage upload (manual for MVP)
 #   ❌ Security scanning (CodeQL)
 #   ❌ Blue-green deployments
+#   ❌ Canary deployments
+#   ❌ Automatic rollback
 
 name: CI
 
@@ -23,6 +29,13 @@ on:
     branches: [main, develop, 'feature/**']
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: 'Run E2E tests (for feature branches)'
+        required: false
+        type: boolean
+        default: false
 
 # Cancel in-progress runs for the same branch
 concurrency:
@@ -33,8 +46,9 @@ jobs:
   # =============================================================================
   # LINT & TYPE CHECK
   # Per Dev/Deploy Spec §14.3: "Lint (ESLint, Prettier)" and "Type check (TypeScript)"
+  # Per Testing Spec §1.5: Quality gates must pass for all PRs
   # =============================================================================
-  lint:
+  lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
@@ -57,18 +71,21 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+        continue-on-error: false
 
       - name: Type check
         run: pnpm type-check
+        continue-on-error: false
 
   # =============================================================================
-  # UNIT TESTS
+  # UNIT & INTEGRATION TESTS
+  # Per Testing Spec §1.5: Unit tests (80% coverage) + Integration tests (critical paths)
   # Per Dev/Deploy Spec §14.3: "Unit tests (Vitest)"
   # =============================================================================
-  test:
-    name: Unit Tests
+  unit-and-integration-tests:
+    name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint-and-typecheck
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,18 +104,80 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
+      - name: Run unit and integration tests
         run: pnpm test
+        continue-on-error: false
+
+  # =============================================================================
+  # CONTRACT TESTS (OpenAPI)
+  # Per Testing Spec §1.5: Contract tests for all MVP endpoints
+  # Validates API implementation matches OpenAPI spec (single source of truth)
+  # =============================================================================
+  contract-tests:
+    name: Contract Tests (OpenAPI)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup PostgreSQL
+        run: |
+          docker run -d \
+            --name postgres-contract \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=analytics_test \
+            -e POSTGRES_USER=postgres \
+            -p 5432:5432 \
+            --health-cmd="pg_isready -U postgres" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=5 \
+            postgres:15-alpine
+          timeout 30 bash -c 'until docker exec postgres-contract pg_isready -U postgres; do sleep 1; done'
+
+      - name: Run database migrations
+        run: pnpm --filter @repo/database db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+
+      - name: Seed database
+        run: pnpm --filter @repo/database db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+
+      - name: Run contract tests
+        # Contract tests spin up the API server internally
+        run: pnpm --filter @repo/api test:contract
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+          PORT: 3001
+        continue-on-error: false
 
   # =============================================================================
   # BUILD VERIFICATION
   # Per Dev/Deploy Spec §14.3: "Build verification"
   # Builds both api and dashboard apps for MVP
+  # Uses Turborepo caching for faster builds
   # =============================================================================
   build:
-    name: Build
+    name: Build Verification
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint-and-typecheck
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -119,3 +198,86 @@ jobs:
 
       - name: Build all packages
         run: pnpm build
+        continue-on-error: false
+
+  # =============================================================================
+  # E2E TESTS (Required for main branch, optional for feature branches)
+  # Per Testing Spec §1.5: MVP E2E scope - 3 critical flows
+  # Required for main branch merges (quality gate)
+  # Optional for feature branches (can be skipped for faster feedback)
+  # =============================================================================
+  e2e-tests:
+    name: E2E Tests (MVP Flows)
+    runs-on: ubuntu-latest
+    needs: [unit-and-integration-tests, contract-tests, build]
+    # Required for main branch and PRs to main
+    # Optional for feature branches (can skip via workflow_dispatch)
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.run_e2e == 'true' || github.event.inputs.run_e2e == true))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: apps/dashboard
+
+      - name: Setup PostgreSQL
+        # Use Docker to run PostgreSQL for tests
+        run: |
+          docker run -d \
+            --name postgres-test \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=analytics_test \
+            -e POSTGRES_USER=postgres \
+            -p 5432:5432 \
+            --health-cmd="pg_isready -U postgres" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=5 \
+            postgres:15-alpine
+          # Wait for PostgreSQL to be ready
+          timeout 30 bash -c 'until docker exec postgres-test pg_isready -U postgres; do sleep 1; done'
+
+      - name: Run database migrations
+        run: pnpm --filter @repo/database db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+
+      - name: Seed database
+        run: pnpm --filter @repo/database db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+
+      - name: Run E2E tests (MVP flows only)
+        run: pnpm test:e2e:mvp
+        working-directory: apps/dashboard
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/analytics_test
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+        continue-on-error: false
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/dashboard/playwright-report/
+          retention-days: 7

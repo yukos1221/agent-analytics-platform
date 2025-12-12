@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as path from 'path';
 
 /**
  * Playwright Configuration for E2E Tests
@@ -76,10 +77,28 @@ export default defineConfig({
 	outputDir: 'test-results/',
 
 	// Run local dev server before starting the tests
-	webServer: {
-		command: 'pnpm dev',
-		url: 'http://localhost:3000',
-		reuseExistingServer: !process.env.CI,
-		timeout: 120 * 1000, // 2 minutes for build
-	},
+	webServer: [
+		// API server (required for dashboard to fetch metrics)
+		{
+			command: 'pnpm --filter @repo/api dev',
+			url: 'http://localhost:3001/health',
+			reuseExistingServer: !process.env.CI,
+			timeout: 120 * 1000,
+			stdout: 'pipe',
+			stderr: 'pipe',
+			cwd: path.resolve(__dirname, '../../'),
+		},
+		// Dashboard server
+		{
+			command: 'pnpm dev',
+			url: 'http://localhost:3000',
+			reuseExistingServer: !process.env.CI,
+			timeout: 120 * 1000, // 2 minutes for build
+			stdout: 'pipe',
+			stderr: 'pipe',
+		},
+	],
+
+	// Global setup: Seed database before running tests
+	globalSetup: './tests/setup-e2e.ts',
 });

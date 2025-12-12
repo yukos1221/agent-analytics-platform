@@ -1,0 +1,3 @@
+# This directory contains generated files
+# Placeholder files (types.ts, client.ts) are kept in repo for type-checking
+# Run `pnpm generate:sdk` to generate actual types and client from OpenAPI spec

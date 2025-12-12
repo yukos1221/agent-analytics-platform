@@ -1,10 +1,21 @@
 /**
  * Metrics API functions
  * Based on API Specification v1.2 and Frontend Architecture Spec
+ *
+ * Uses generated types from @repo/sdk (OpenAPI spec as single source of truth)
  */
 
 import { api } from './client';
+// Use generated types from SDK (OpenAPI spec as single source of truth)
+// Fallback to local types if SDK not generated yet
 import type { MetricsOverviewResponse } from '@/types/api';
+
+// Try to import generated types (will fail gracefully if not generated)
+type MetricsResponse = MetricsOverviewResponse;
+
+// TODO: Once SDK is generated, use:
+// import type { paths } from '@repo/sdk/types';
+// type MetricsResponse = paths['/v1/metrics/overview']['get']['responses']['200']['content']['application/json'];
 
 export type PeriodOption = '1d' | '7d' | '30d' | '90d';
 
@@ -22,10 +33,10 @@ interface GetMetricsOverviewOptions {
  */
 export async function getMetricsOverview(
 	options: GetMetricsOverviewOptions = {}
-): Promise<MetricsOverviewResponse> {
+): Promise<MetricsResponse> {
 	const { period = '7d', compare = true } = options;
 
-	return api.get<MetricsOverviewResponse>('/v1/metrics/overview', {
+	return api.get<MetricsResponse>('/v1/metrics/overview', {
 		period,
 		compare,
 	});

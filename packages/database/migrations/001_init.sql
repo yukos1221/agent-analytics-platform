@@ -1,5 +1,10 @@
 -- Initial schema for Phase 1 (Postgres / Timescale ready)
 -- Creates orgs, sessions, events_raw, and api_keys tables.
+--
+-- NOTE: This SQL migration has been superseded by TypeScript migrations
+-- in packages/database/src/migrations/0001_init_schema.ts
+-- The TypeScript migration provides reversible up/down functions.
+-- This file is kept for reference but should not be used directly.
 
 BEGIN;
 

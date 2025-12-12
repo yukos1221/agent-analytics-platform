@@ -9,6 +9,7 @@
 
 import { Hono } from 'hono';
 import { events, metrics } from './routes';
+import docs from './routes/docs';
 
 // Types matching OpenAPI HealthResponse schema
 type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
@@ -56,6 +57,11 @@ v1.route('/metrics', metrics);
 app.route('/v1', v1);
 
 // ====================
+// API Documentation
+// ====================
+app.route('/docs', docs);
+
+// ====================
 // Root endpoint
 // ====================
 app.get('/', (c) => {
@@ -64,6 +70,7 @@ app.get('/', (c) => {
 		version: '1.0.0',
 		endpoints: {
 			health: '/health',
+			docs: '/docs',
 			events: '/v1/events',
 			metrics: '/v1/metrics/overview',
 		},

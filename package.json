@@ -8,6 +8,7 @@
 		"lint": "turbo run lint",
 		"type-check": "turbo run type-check",
 		"test": "turbo run test",
+		"generate:sdk": "pnpm --filter @repo/sdk generate",
 		"clean": "turbo run clean && rm -rf node_modules"
 	},
 	"devDependencies": {

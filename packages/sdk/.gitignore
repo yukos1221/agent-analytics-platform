@@ -1,0 +1,8 @@
+# Generated files
+# Placeholder files (types.ts, client.ts) are tracked for type-checking
+# They will be overwritten when running pnpm generate:sdk
+dist/
+.turbo/
+
+# Dependencies
+node_modules/

@@ -1,4 +1,12 @@
 // API Response Types - derived from OpenAPI spec
+//
+// NOTE: These types are manually maintained for now.
+// In Phase 1, we're migrating to generated types from @repo/sdk.
+// Once SDK is generated, prefer using types from '@repo/sdk/types'.
+//
+// Example:
+//   import type { paths } from '@repo/sdk/types';
+//   type MetricsResponse = paths['/v1/metrics/overview']['get']['responses']['200']['content']['application/json'];
 
 export type Trend = 'up' | 'down' | 'stable';
 
