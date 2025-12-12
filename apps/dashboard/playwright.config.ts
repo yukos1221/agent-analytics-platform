@@ -18,7 +18,8 @@ export default defineConfig({
 	testMatch: '**/*.spec.ts',
 
 	// Maximum time one test can run
-	timeout: 30 * 1000,
+	// Increased for CI where servers need to start
+	timeout: 60 * 1000,
 
 	// Expect timeout
 	expect: {

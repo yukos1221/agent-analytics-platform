@@ -36,19 +36,40 @@ test.describe('Flow 1: Dashboard Metrics Display @mvp', () => {
 
 		// Step 2: Wait for API call to complete (metrics endpoint)
 		// Wait for ANY response (success or error) to ensure API call completed
-		await page
-			.waitForResponse(
+		let apiResponded = false;
+		try {
+			await page.waitForResponse(
 				(response) => response.url().includes('/v1/metrics/overview'),
-				{ timeout: 30000 }
-			)
-			.catch(() => {
-				console.warn('Metrics API call did not complete within timeout');
-			});
+				{ timeout: 45000 }
+			);
+			apiResponded = true;
+		} catch (error) {
+			console.warn('Metrics API call did not complete within timeout');
+			// Check if API server is running by trying health endpoint
+			try {
+				const healthResponse = await page.request.get(
+					'http://localhost:3001/health'
+				);
+				if (healthResponse.ok()) {
+					console.warn(
+						'API server is running but metrics endpoint did not respond'
+					);
+				} else {
+					console.warn('API server health check failed');
+				}
+			} catch (healthError) {
+				console.warn('API server may not be running:', healthError);
+			}
+		}
 
-		// Step 3: Wait for page to be interactive and React to render
-		await page.waitForLoadState('networkidle');
-		// Give React time to render after API response
-		await page.waitForTimeout(1000);
+		// Step 3: Wait for page to be interactive
+		// Only wait for networkidle if API responded, otherwise skip
+		if (apiResponded) {
+			await page.waitForLoadState('networkidle');
+		} else {
+			// If API didn't respond, wait a bit for page to render anyway
+			await page.waitForLoadState('domcontentloaded');
+		}
 
 		// Step 4: Verify dashboard header/title is visible
 		await expect(page.getByRole('heading', { name: /dashboard|overview/i }))
@@ -152,6 +173,7 @@ test.describe('Flow 1: Dashboard Metrics Display @mvp', () => {
 		// Allow buffer for CI environments
 		expect(loadTime).toBeLessThan(5000);
 
+		// eslint-disable-next-line no-console
 		console.log(`Dashboard load time: ${loadTime}ms`);
 	});
 });
@@ -232,18 +254,24 @@ test.describe('Flow 3: Date Range Filter @mvp', () => {
 		await page.waitForLoadState('networkidle');
 
 		// Step 2: Wait for API call to complete (any response)
-		await page
-			.waitForResponse(
+		let apiResponded = false;
+		try {
+			await page.waitForResponse(
 				(response) => response.url().includes('/v1/metrics/overview'),
-				{ timeout: 30000 }
-			)
-			.catch(() => {
-				console.warn('Metrics API call did not complete');
-			});
+				{ timeout: 45000 }
+			);
+			apiResponded = true;
+		} catch (error) {
+			// eslint-disable-next-line no-console
+			console.warn('Metrics API call did not complete');
+		}
 
 		// Wait for React to render
-		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
+		if (apiResponded) {
+			await page.waitForLoadState('networkidle');
+		} else {
+			await page.waitForLoadState('domcontentloaded');
+		}
 
 		// Check for error state
 		const hasError = await page
@@ -259,13 +287,13 @@ test.describe('Flow 3: Date Range Filter @mvp', () => {
 			timeout: 20000,
 		});
 
-		// Step 3: Capture initial metric values
+		// Step 3: Capture initial metric values (for potential comparison)
 		const initialContent = await page.locator('main').textContent();
-		const initialActiveUsers = extractNumber(
+		const _initialActiveUsers = extractNumber(
 			initialContent || '',
 			'Active Users'
 		);
-		const initialSessions = extractNumber(
+		const _initialSessions = extractNumber(
 			initialContent || '',
 			'Total Sessions'
 		);
@@ -328,6 +356,7 @@ test.describe('Flow 3: Date Range Filter @mvp', () => {
 			// The important thing is that the API was called and metrics refreshed
 		} else {
 			// Period selector not implemented yet - skip this part
+			// eslint-disable-next-line no-console -- Debug logging for test debugging
 			console.log('Period selector not found - feature may not be implemented');
 		}
 	});
