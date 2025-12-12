@@ -146,6 +146,35 @@ export async function runMigrations(
 			);
 		}
 
+		// Ensure meta/_journal.json exists (required by Drizzle migrator)
+		const metaDir = path.join(migrationsFolder, 'meta');
+		const journalPath = path.join(metaDir, '_journal.json');
+		if (!fs.existsSync(journalPath)) {
+			// Create meta directory if it doesn't exist
+			if (!fs.existsSync(metaDir)) {
+				fs.mkdirSync(metaDir, { recursive: true });
+			}
+			// Create a basic journal file if it doesn't exist
+			// This is a fallback - ideally migrations should be generated with drizzle-kit generate
+			const journalContent = {
+				version: '7',
+				dialect: 'postgresql',
+				entries: [
+					{
+						idx: 0,
+						version: '7',
+						when: Date.now(),
+						tag: '001_init',
+						breakpoints: true,
+					},
+				],
+			};
+			fs.writeFileSync(journalPath, JSON.stringify(journalContent, null, 2));
+			console.log(
+				'⚠️  Created meta/_journal.json. Consider running `pnpm db:generate` to generate proper migration metadata.'
+			);
+		}
+
 		await drizzleMigrate(db, { migrationsFolder });
 
 		const duration = Date.now() - startTime;
@@ -156,10 +185,28 @@ export async function runMigrations(
 		};
 	} catch (error) {
 		const err = error as Error;
+		// Provide more detailed error information
+		let errorMessage = err.message || String(error);
+
+		// Handle AggregateError (common with postgres connection errors)
+		if (error instanceof Error && 'errors' in error) {
+			const aggregateError = error as { errors: unknown[] };
+			const firstError = aggregateError.errors?.[0];
+			if (firstError instanceof Error) {
+				errorMessage = firstError.message || errorMessage;
+			}
+		}
+
+		// Handle cause chain
+		if ((err as { cause?: Error }).cause) {
+			const cause = (err as { cause: Error }).cause;
+			errorMessage = `${errorMessage}: ${cause.message}`;
+		}
+
 		return {
 			success: false,
 			migrations: [],
-			error: err.message,
+			error: errorMessage,
 		};
 	} finally {
 		await sql.end();
