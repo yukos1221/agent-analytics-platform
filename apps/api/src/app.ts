@@ -8,7 +8,7 @@
  */
 
 import { Hono } from 'hono';
-import { events, metrics } from './routes';
+import { events, metrics, sessions } from './routes';
 import docs from './routes/docs';
 
 // Types matching OpenAPI HealthResponse schema
@@ -52,6 +52,7 @@ const v1 = new Hono();
 // Mount route handlers
 v1.route('/events', events);
 v1.route('/metrics', metrics);
+v1.route('/sessions', sessions);
 
 // Mount v1 under /v1 prefix
 app.route('/v1', v1);
@@ -73,6 +74,7 @@ app.get('/', (c) => {
 			docs: '/docs',
 			events: '/v1/events',
 			metrics: '/v1/metrics/overview',
+			sessions: '/v1/sessions',
 		},
 	});
 });
