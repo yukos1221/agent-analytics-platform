@@ -74,6 +74,7 @@ app.get('/', (c) => {
 			docs: '/docs',
 			events: '/v1/events',
 			metrics: '/v1/metrics/overview',
+			timeseries: '/v1/metrics/timeseries',
 			sessions: '/v1/sessions',
 		},
 	});

@@ -1,12 +1,16 @@
 import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
 import {
 	PeriodQuerySchema,
 	MetricsOverviewResponse,
+	TimeseriesQuerySchema,
+	MetricsTimeseriesResponse,
 	generateRequestId,
 	ErrorResponse,
 } from '../schemas';
 import { jwtAuth, getAuthContext, rateLimit } from '../middleware';
 import { computeMetricsOverview } from '../services';
+import { getMetricsTimeseries } from '../services/timeseriesService';
 import { getOrSetCachedMetrics } from '../lib/cache/metricsCache';
 
 const metrics = new Hono();
@@ -130,5 +134,101 @@ metrics.get('/overview', async (c) => {
 		return c.json(response, 500);
 	}
 });
+
+/**
+ * GET /metrics/timeseries
+ * Get time-series metrics for charts
+ *
+ * OpenAPI: operationId: getMetricsTimeseries
+ * Spec: specs/openapi.mvp.v1.yaml lines 233-302
+ * Docs: docs/03-api-specification-v1.2.md Section 6.2
+ *
+ * Authentication: BearerAuth (JWT)
+ * Query Parameters:
+ * - metric: Metric to retrieve (required)
+ * - period: Time period (1d|7d|30d|90d, default: 7d)
+ * - granularity: Data point granularity (hour|day|week, auto-determined if not specified)
+ *
+ * Response:
+ * - 200 OK: MetricsTimeseriesResponse with time-series data points
+ * - 400 Bad Request: Invalid query parameters
+ * - 401 Unauthorized: Missing or invalid auth
+ * - 429 Rate Limit Exceeded: Too many requests
+ * - 500 Internal Error: Server error
+ */
+metrics.get(
+	'/timeseries',
+	zValidator('query', TimeseriesQuerySchema, (result, c) => {
+		if (!result.success) {
+			return c.json<ErrorResponse>(
+				{
+					error: {
+						code: 'VAL_INVALID_FORMAT',
+						message: 'Invalid query parameters',
+						details: {
+							errors: result.error.errors,
+						},
+					},
+					request_id: generateRequestId(),
+				},
+				400
+			);
+		}
+	}),
+	async (c) => {
+		const requestId = generateRequestId();
+		const auth = getAuthContext(c);
+		const orgId = auth?.org_id || 'org_default';
+
+		try {
+			const query = c.req.valid('query');
+
+			const startTime = Date.now();
+			const result = await getMetricsTimeseries(orgId, query);
+			const queryTimeMs = Date.now() - startTime;
+
+			const response: MetricsTimeseriesResponse = {
+				metric: result.metric,
+				period: result.period,
+				granularity: result.granularity,
+				data: result.data,
+				aggregations: result.aggregations,
+				meta: {
+					request_id: requestId,
+					query_time_ms: queryTimeMs,
+				},
+			};
+
+			// Set rate limit headers per OpenAPI spec
+			c.header('X-RateLimit-Limit', '1000');
+			c.header('X-RateLimit-Remaining', '999');
+			c.header(
+				'X-RateLimit-Reset',
+				String(Math.floor(Date.now() / 1000) + 3600)
+			);
+
+			// Set cache header (shorter TTL for timeseries as data changes more frequently)
+			c.header('Cache-Control', 'private, max-age=30');
+
+			return c.json(response, 200);
+		} catch (error) {
+			console.error('Timeseries computation error:', error);
+			const err = error as Error;
+
+			const response: ErrorResponse = {
+				error: {
+					code: 'SRV_INTERNAL_ERROR',
+					message: 'An unexpected error occurred. Please try again.',
+					details: {
+						error: err.message,
+					},
+				},
+				request_id: requestId,
+			};
+
+			return c.json(response, 500);
+		}
+	}
+);
 
 export default metrics;
