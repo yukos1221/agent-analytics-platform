@@ -53,7 +53,7 @@ describe('EventTimeline', () => {
 		render(<EventTimeline events={reversedEvents} />);
 
 		// Check that events are displayed in chronological order (session_start first)
-		const descriptions = screen.getAllByText(/Session started|Started code_generation task|Task failed/);
+		const descriptions = screen.getAllByText(/Session started|Started code generation task|Task failed/);
 		expect(descriptions).toHaveLength(3);
 
 		// First event should be session_start
@@ -66,7 +66,7 @@ describe('EventTimeline', () => {
 		render(<EventTimeline events={mockEvents} />);
 
 		expect(screen.getByText('Session started')).toBeInTheDocument();
-		expect(screen.getByText('Started code_generation task')).toBeInTheDocument();
+		expect(screen.getByText('Started code generation task')).toBeInTheDocument();
 		expect(screen.getByText('Task failed: Something went wrong')).toBeInTheDocument();
 	});
 
@@ -74,9 +74,10 @@ describe('EventTimeline', () => {
 		render(<EventTimeline events={mockEvents} />);
 
 		// The error event should have red background styling
-		const errorEvent = screen.getByText('Task failed: Something went wrong').closest('div');
-		expect(errorEvent).toHaveClass('bg-red-50');
-		expect(errorEvent).toHaveClass('border-red-200');
+		// Find the parent container div that has the red styling
+		const errorEventContainer = screen.getByText('Task failed: Something went wrong').closest('[class*="bg-red-50"]');
+		expect(errorEventContainer).toHaveClass('bg-red-50');
+		expect(errorEventContainer).toHaveClass('border-red-200');
 	});
 
 	it('shows event metadata when available', () => {
