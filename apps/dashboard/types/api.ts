@@ -52,6 +52,49 @@ export interface ErrorResponse {
 	request_id: string;
 }
 
+// Event API Types
+export type EventType =
+	| 'session_start'
+	| 'session_end'
+	| 'session_pause'
+	| 'session_resume'
+	| 'task_start'
+	| 'task_complete'
+	| 'task_error'
+	| 'task_cancel'
+	| 'tool_call'
+	| 'tool_response'
+	| 'error'
+	| 'warning'
+	| 'feedback_positive'
+	| 'feedback_negative';
+
+export interface Event {
+	event_id: string;
+	event_type: EventType;
+	timestamp: string;
+	session_id: string;
+	user_id: string;
+	agent_id: string;
+	environment?: string;
+	metadata?: Record<string, unknown>;
+}
+
+export interface SessionEventsResponse {
+	session_id: string;
+	events: Event[];
+	pagination: {
+		cursor: string | null;
+		has_more: boolean;
+		total_estimate?: number;
+	};
+	meta?: {
+		cache_hit?: boolean;
+		request_id?: string;
+		query_time_ms?: number;
+	};
+}
+
 // Session API Types
 export type SessionStatus = 'active' | 'completed' | 'error';
 
@@ -79,6 +122,51 @@ export interface Session {
 	ended_at: string | null;
 	duration_seconds: number | null;
 	metrics: SessionMetrics;
+}
+
+// Detailed session response from GET /v1/sessions/{id}
+export interface SessionAgentInfo {
+	name: string;
+	version: string;
+}
+
+export interface SessionClientInfo {
+	ide: string;
+	ide_version: string;
+	os: string;
+	os_version: string;
+}
+
+export interface SessionDetailMetrics {
+	tasks_completed: number;
+	tasks_failed: number;
+	tasks_cancelled: number;
+	tokens_input: number;
+	tokens_output: number;
+	estimated_cost: number;
+	avg_task_duration_ms: number;
+}
+
+export interface SessionTimeline {
+	event_count: number;
+	first_event: string;
+	last_event: string;
+}
+
+export interface SessionDetailResponse {
+	session_id: string;
+	user_id: string;
+	user?: UserSummary;
+	agent_id: string;
+	agent?: SessionAgentInfo;
+	client_info?: SessionClientInfo;
+	environment: string;
+	status: SessionStatus;
+	started_at: string;
+	ended_at: string | null;
+	duration_seconds: number | null;
+	metrics: SessionDetailMetrics;
+	timeline?: SessionTimeline;
 }
 
 export interface SessionsListResponse {

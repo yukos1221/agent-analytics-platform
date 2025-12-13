@@ -5,14 +5,15 @@
  * Per Frontend Architecture Spec §8.2 - Data Fetching Strategy
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import {
 	getSessions,
 	getSessionDetail,
+	getSessionEvents,
 	sessionKeys,
 } from '@/lib/api/sessions';
 import type { PeriodOption } from '@/lib/api/metrics';
-import type { SessionsListResponse, SessionStatus } from '@/types/api';
+import type { SessionsListResponse, SessionDetailResponse, SessionEventsResponse, SessionStatus } from '@/types/api';
 
 export interface SessionFilters {
 	period: PeriodOption;
@@ -110,6 +111,27 @@ export function useSession(sessionId: string) {
 		queryFn: () => getSessionDetail({ sessionId }),
 		enabled: !!sessionId,
 		staleTime: 60 * 1000, // Session details don't change often
+	});
+}
+
+/**
+ * Hook to fetch session events (for timeline/replay)
+ * GET /v1/sessions/{sessionId}/events
+ */
+export function useSessionEvents(sessionId: string, enabled: boolean = true) {
+	return useInfiniteQuery({
+		queryKey: sessionKeys.events(sessionId),
+		queryFn: ({ pageParam }) =>
+			getSessionEvents({
+				sessionId,
+				cursor: pageParam,
+				limit: 100,
+			}),
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) =>
+			lastPage.pagination.has_more ? lastPage.pagination.cursor : undefined,
+		enabled: !!sessionId && enabled,
+		staleTime: 5 * 60 * 1000, // Session events don't change once session is complete
 	});
 }
 

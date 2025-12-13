@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { SessionsListResponse, Session } from '@/types/api';
+import type { SessionsListResponse, Session, SessionDetailResponse, SessionEventsResponse } from '@/types/api';
 import type { PeriodOption } from './metrics';
 import { getDateRangeForPeriod, formatDateForAPI } from '@/lib/utils/date';
 
@@ -20,6 +20,12 @@ interface GetSessionsOptions {
 
 interface GetSessionDetailOptions {
 	sessionId: string;
+}
+
+interface GetSessionEventsOptions {
+	sessionId: string;
+	limit?: number;
+	cursor?: string;
 }
 
 /**
@@ -72,9 +78,26 @@ export async function getSessions(
  */
 export async function getSessionDetail(
 	options: GetSessionDetailOptions
-): Promise<Session> {
+): Promise<SessionDetailResponse> {
 	const { sessionId } = options;
-	return api.get<Session>(`/v1/sessions/${sessionId}`);
+	return api.get<SessionDetailResponse>(`/v1/sessions/${sessionId}`);
+}
+
+/**
+ * Fetch session events from API
+ * GET /v1/sessions/{sessionId}/events
+ */
+export async function getSessionEvents(
+	options: GetSessionEventsOptions
+): Promise<SessionEventsResponse> {
+	const { sessionId, limit = 100, cursor } = options;
+
+	const params: Record<string, string | number | undefined> = {
+		limit,
+		cursor,
+	};
+
+	return api.get<SessionEventsResponse>(`/v1/sessions/${sessionId}/events`, params);
 }
 
 /**
@@ -87,4 +110,5 @@ export const sessionKeys = {
 		[...sessionKeys.lists(), params] as const,
 	details: () => [...sessionKeys.all, 'detail'] as const,
 	detail: (id: string) => [...sessionKeys.details(), id] as const,
+	events: (id: string) => [...sessionKeys.detail(id), 'events'] as const,
 };

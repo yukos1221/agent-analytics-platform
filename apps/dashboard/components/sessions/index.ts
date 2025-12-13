@@ -10,3 +10,6 @@ export { EventTypeIcon } from './event-type-icon';
 export { SessionFilters } from './session-filters';
 export { SessionRow } from './session-row';
 export { SessionTable } from './session-table';
+export { SessionDetailHeader } from './session-detail-header';
+export { SessionMetrics } from './session-metrics';
+export { EventTimeline } from './event-timeline';
