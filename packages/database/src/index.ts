@@ -69,6 +69,101 @@ export async function getApiKeyByPrefix(prefix: string) {
 	return rows[0];
 }
 
+/**
+ * Insert a new API key into the database
+ */
+export async function insertApiKey(record: {
+	id: string;
+	api_key_prefix: string;
+	org_id: string;
+	name?: string;
+	scopes?: string[];
+	environment?: string;
+	status?: string;
+	expires_at?: Date | null;
+	created_by?: { id: string; name?: string };
+}) {
+	const db = getSql();
+	if (!db) return null;
+
+	const scopesJson = record.scopes ? JSON.stringify(record.scopes) : null;
+	const createdByJson = record.created_by
+		? JSON.stringify(record.created_by)
+		: null;
+
+	await db`
+		INSERT INTO api_keys (
+			id, api_key_prefix, org_id, name, scopes, environment, status, expires_at, created_by
+		) VALUES (
+			${record.id},
+			${record.api_key_prefix},
+			${record.org_id},
+			${record.name || null},
+			${scopesJson ? scopesJson : null}::jsonb,
+			${record.environment || 'production'},
+			${record.status || 'active'},
+			${record.expires_at || null},
+			${createdByJson ? createdByJson : null}::jsonb
+		)
+	`;
+}
+
+/**
+ * List API keys for an organization
+ */
+export async function listApiKeysByOrg(orgId: string) {
+	const db = getSql();
+	if (!db) return [];
+
+	const rows = await db`
+		SELECT 
+			id,
+			api_key_prefix,
+			org_id,
+			name,
+			scopes,
+			environment,
+			status,
+			created_at,
+			expires_at,
+			last_used_at,
+			created_by
+		FROM api_keys
+		WHERE org_id = ${orgId} AND status = 'active'
+		ORDER BY created_at DESC
+	`;
+
+	return rows.map((row) => ({
+		id: row.id,
+		api_key_prefix: row.api_key_prefix,
+		org_id: row.org_id,
+		name: row.name,
+		scopes: row.scopes || ['events:write'],
+		environment: row.environment || 'production',
+		status: row.status,
+		created_at: row.created_at,
+		expires_at: row.expires_at,
+		last_used_at: row.last_used_at,
+		created_by: row.created_by,
+	}));
+}
+
+/**
+ * Delete (revoke) an API key
+ */
+export async function deleteApiKey(orgId: string, keyId: string) {
+	const db = getSql();
+	if (!db) return false;
+
+	const result = await db`
+		UPDATE api_keys
+		SET status = 'revoked'
+		WHERE id = ${keyId} AND org_id = ${orgId} AND status = 'active'
+	`;
+
+	return result.count > 0;
+}
+
 export async function queryEventsByOrgRange(
 	orgId: string,
 	start: Date,

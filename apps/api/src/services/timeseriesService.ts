@@ -374,3 +374,4 @@ export async function getMetricsTimeseries(
 		aggregations,
 	};
 }
+

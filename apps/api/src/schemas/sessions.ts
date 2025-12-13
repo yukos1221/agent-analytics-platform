@@ -151,3 +151,4 @@ export const SessionDetailResponseSchema = SessionSummarySchema.extend({
 });
 
 export type SessionDetailResponse = z.infer<typeof SessionDetailResponseSchema>;
+

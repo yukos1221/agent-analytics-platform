@@ -72,3 +72,4 @@ export const MetricsTimeseriesResponseSchema = z.object({
 export type MetricsTimeseriesResponse = z.infer<
 	typeof MetricsTimeseriesResponseSchema
 >;
+
