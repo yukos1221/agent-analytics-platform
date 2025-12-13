@@ -53,7 +53,7 @@ export interface ErrorResponse {
 }
 
 // Session API Types
-export type SessionStatus = 'active' | 'completed' | 'error' | 'cancelled';
+export type SessionStatus = 'active' | 'completed' | 'error';
 
 export interface UserSummary {
 	name: string;

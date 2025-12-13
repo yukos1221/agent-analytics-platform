@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { SessionStatus } from '@/types/api';
 
 interface SessionStatusBadgeProps {
@@ -25,12 +25,6 @@ const statusConfig = {
 		icon: AlertCircle,
 		className: 'bg-red-50 text-red-700 border-red-200',
 		iconClassName: 'text-red-500',
-	},
-	cancelled: {
-		label: 'Cancelled',
-		icon: XCircle,
-		className: 'bg-gray-50 text-gray-700 border-gray-200',
-		iconClassName: 'text-gray-500',
 	},
 } as const;
 

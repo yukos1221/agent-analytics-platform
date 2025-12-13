@@ -26,7 +26,6 @@ const STATUS_OPTIONS: { value: SessionStatus; label: string }[] = [
 	{ value: 'active', label: 'Active' },
 	{ value: 'completed', label: 'Completed' },
 	{ value: 'error', label: 'Error' },
-	{ value: 'cancelled', label: 'Cancelled' },
 ];
 
 export function SessionFilters({

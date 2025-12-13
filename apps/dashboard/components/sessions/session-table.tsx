@@ -76,7 +76,7 @@ interface SessionTableProps {
 }
 
 export function SessionTable({ className }: SessionTableProps) {
-	const { sessions, filters, updateFilters } = useSessions();
+	const { sessions, filters, updateFilters, isLoading, error } = useSessions();
 	const [sorting, setSorting] = useState<SortingState>([
 		{ id: 'started_at', desc: true }, // Default sort by date descending
 	]);
@@ -92,6 +92,106 @@ export function SessionTable({ className }: SessionTableProps) {
 			sorting,
 		},
 	});
+
+	// Loading state
+	if (isLoading) {
+		return (
+			<div className={className}>
+				{/* Filters Skeleton */}
+				<div className="mb-6">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="h-10 w-full max-w-md animate-pulse rounded-md bg-gray-200" />
+						<div className="flex flex-wrap items-center gap-4">
+							<div className="h-10 w-[160px] animate-pulse rounded-md bg-gray-200" />
+							<div className="flex gap-1">
+								{Array.from({ length: 4 }).map((_, i) => (
+									<div key={i} className="h-8 w-16 animate-pulse rounded-md bg-gray-200" />
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Table Skeleton */}
+				<div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+					<div className="min-w-full divide-y divide-gray-200">
+						{/* Header */}
+						<div className="bg-gray-50">
+							<div className="flex divide-x divide-gray-200">
+								{Array.from({ length: 6 }).map((_, i) => (
+									<div key={i} className="flex-1 px-6 py-3">
+										<div className="h-4 w-16 animate-pulse rounded bg-gray-300" />
+									</div>
+								))}
+							</div>
+						</div>
+						{/* Rows */}
+						{Array.from({ length: 5 }).map((_, rowIndex) => (
+							<div key={rowIndex} className="flex divide-x divide-gray-200">
+								{Array.from({ length: 6 }).map((_, colIndex) => (
+									<div key={colIndex} className="flex-1 px-6 py-4">
+										<div className="h-4 animate-pulse rounded bg-gray-200" />
+									</div>
+								))}
+							</div>
+						))}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Error state
+	if (error) {
+		return (
+			<div className={className}>
+				{/* Filters */}
+				<div className="mb-6">
+					<SessionFilters
+						period={filters.period}
+						onPeriodChange={(period: PeriodOption) => updateFilters({ period })}
+						selectedStatuses={filters.statuses}
+						onStatusesChange={(statuses) => updateFilters({ statuses })}
+						searchQuery={filters.searchQuery}
+						onSearchChange={(query) => updateFilters({ searchQuery: query })}
+					/>
+				</div>
+
+				{/* Error State */}
+				<div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+					<div className="text-red-600">
+						<svg
+							className="mx-auto h-12 w-12"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+							/>
+						</svg>
+					</div>
+					<h3 className="mt-4 text-lg font-medium text-red-800">
+						Error loading sessions
+					</h3>
+					<p className="mt-2 text-sm text-red-700">
+						{error instanceof Error ? error.message : 'An unexpected error occurred'}
+					</p>
+					<div className="mt-4">
+						<button
+							onClick={() => window.location.reload()}
+							className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+						>
+							Try Again
+						</button>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className={className}>
