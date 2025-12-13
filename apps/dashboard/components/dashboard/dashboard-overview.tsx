@@ -17,7 +17,6 @@
 import { useState } from 'react';
 import { MetricGrid } from './metric-grid';
 import { ActivityChart } from './activity-chart';
-import { ActivityChartSkeleton } from './activity-chart-skeleton';
 import { PeriodSelector } from '@/components/filters';
 import type { PeriodOption } from '@/lib/hooks';
 import type { MetricsOverviewResponse } from '@/types/api';

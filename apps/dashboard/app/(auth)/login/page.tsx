@@ -16,11 +16,12 @@ export default function LoginPage() {
 
 		const formData = new FormData(event.currentTarget);
 		const email = formData.get('email') as string;
-		const password = formData.get('password') as string;
+		const _password = formData.get('password') as string;
 
 		try {
 			// TODO: Implement actual authentication with NextAuth
 			// For MVP, simulate login
+			// eslint-disable-next-line no-console
 			console.log('Login attempt:', { email });
 
 			// Simulate API call delay

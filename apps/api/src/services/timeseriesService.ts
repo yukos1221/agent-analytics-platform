@@ -10,7 +10,6 @@
 import { eventStore, type StoredEvent } from './index';
 import {
 	queryEventsByOrgRange,
-	querySessionsByOrgRange,
 } from '../../../../packages/database/src';
 import type {
 	TimeseriesMetric,
@@ -360,7 +359,7 @@ export async function getMetricsTimeseries(
 	// Calculate aggregations
 	const aggregations = calculateAggregations(data);
 
-	const queryTimeMs = Date.now() - startTime;
+	const _queryTimeMs = Date.now() - startTime;
 
 	return {
 		metric,
@@ -374,4 +373,5 @@ export async function getMetricsTimeseries(
 		aggregations,
 	};
 }
+
 

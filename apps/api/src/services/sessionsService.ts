@@ -74,8 +74,8 @@ function calculateSessionMetrics(events: StoredEvent[]): {
 	const avg_task_duration_ms =
 		taskDurations.length > 0
 			? Math.round(
-					taskDurations.reduce((sum, d) => sum + d, 0) / taskDurations.length
-			  )
+				taskDurations.reduce((sum, d) => sum + d, 0) / taskDurations.length
+			)
 			: undefined;
 
 	return {
@@ -443,8 +443,8 @@ export async function getSessionDetail(
 		last_event:
 			sessionEvents.length > 0
 				? new Date(
-						sessionEvents[sessionEvents.length - 1].timestamp
-				  ).toISOString()
+					sessionEvents[sessionEvents.length - 1].timestamp
+				).toISOString()
 				: undefined,
 	};
 
@@ -457,9 +457,9 @@ export async function getSessionDetail(
 					ide?: string;
 					ide_version?: string;
 					os?: string;
-					os_version?: string;
-				};
-		  }
+				os_version?: string;
+			};
+		}
 		| undefined;
 
 	return {
@@ -497,8 +497,9 @@ export async function getSessionDetail(
 					ide_version: clientInfo.client_info.ide_version,
 					os: clientInfo.client_info.os,
 					os_version: clientInfo.client_info.os_version,
-			  }
+			}
 			: undefined,
 	};
 }
+
 

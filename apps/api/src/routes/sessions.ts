@@ -2,8 +2,6 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import {
 	SessionListQuerySchema,
-	SessionListResponseSchema,
-	SessionDetailResponseSchema,
 	generateRequestId,
 	ErrorResponse,
 } from '../schemas';
@@ -180,4 +178,5 @@ sessions.get('/:session_id', async (c) => {
 });
 
 export default sessions;
+
 
