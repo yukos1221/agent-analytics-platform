@@ -51,3 +51,46 @@ export interface ErrorResponse {
 	};
 	request_id: string;
 }
+
+// Session API Types
+export type SessionStatus = 'active' | 'completed' | 'error' | 'cancelled';
+
+export interface UserSummary {
+	name: string;
+	email: string;
+	avatar_url?: string;
+}
+
+export interface SessionMetrics {
+	tasks_completed: number;
+	tasks_failed: number;
+	tokens_used: number;
+	estimated_cost: number;
+}
+
+export interface Session {
+	session_id: string;
+	user_id: string;
+	user: UserSummary;
+	agent_id: string;
+	environment: string;
+	status: SessionStatus;
+	started_at: string;
+	ended_at: string | null;
+	duration_seconds: number | null;
+	metrics: SessionMetrics;
+}
+
+export interface SessionsListResponse {
+	data: Session[];
+	pagination: {
+		cursor: string | null;
+		has_more: boolean;
+		total_estimate?: number;
+	};
+	meta?: {
+		cache_hit?: boolean;
+		request_id?: string;
+		query_time_ms?: number;
+	};
+}

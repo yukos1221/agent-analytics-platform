@@ -7,4 +7,5 @@ export {
 	useOverviewMetrics,
 	prefetchOverviewMetrics,
 } from './useOverviewMetrics';
+export { useSessions } from './useSessions';
 export type { PeriodOption } from './useOverviewMetrics';

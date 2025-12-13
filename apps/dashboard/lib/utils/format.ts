@@ -32,3 +32,32 @@ export function formatCurrency(
 export function formatPercent(value: number, decimals = 1): string {
 	return `${value.toFixed(decimals)}%`;
 }
+
+/**
+ * Format duration in milliseconds to human readable string
+ * Examples: 65000ms → "1m 5s", 3725000ms → "1h 2m 5s"
+ */
+export function formatDuration(milliseconds: number): string {
+	if (milliseconds < 1000) {
+		return `${milliseconds}ms`;
+	}
+
+	const totalSeconds = Math.floor(milliseconds / 1000);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+
+	const parts: string[] = [];
+
+	if (hours > 0) {
+		parts.push(`${hours}h`);
+	}
+	if (minutes > 0) {
+		parts.push(`${minutes}m`);
+	}
+	if (seconds > 0 || parts.length === 0) {
+		parts.push(`${seconds}s`);
+	}
+
+	return parts.join(' ');
+}
