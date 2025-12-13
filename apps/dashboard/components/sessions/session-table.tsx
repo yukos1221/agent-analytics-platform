@@ -10,7 +10,7 @@ import {
 	type ColumnDef,
 	type SortingState,
 } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { SessionRow } from './session-row';
 import { SessionFilters } from './session-filters';
@@ -20,6 +20,7 @@ import type { PeriodOption } from '@/lib/hooks';
 
 const columnHelper = createColumnHelper<Session>();
 
+// Memoize columns to prevent unnecessary re-renders
 const columns: ColumnDef<Session, any>[] = [
 	columnHelper.accessor('started_at', {
 		header: 'Started',
@@ -75,7 +76,7 @@ interface SessionTableProps {
 	className?: string;
 }
 
-export function SessionTable({ className }: SessionTableProps) {
+export const SessionTable = memo(function SessionTable({ className }: SessionTableProps) {
 	const { sessions, filters, updateFilters, isLoading, error } = useSessions();
 	const [sorting, setSorting] = useState<SortingState>([
 		{ id: 'started_at', desc: true }, // Default sort by date descending
@@ -208,8 +209,12 @@ export function SessionTable({ className }: SessionTableProps) {
 			</div>
 
 			{/* Table */}
+			{/* TODO: Phase 2 - Add virtualized scrolling for large datasets */}
+			{/* TODO: Phase 2 - Add advanced filtering (date ranges, custom columns) */}
+			{/* TODO: Phase 2 - Add export functionality (CSV, JSON) */}
+			{/* TODO: Phase 2 - Add bulk actions (delete, tag, export) */}
 			<div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-				<table className="min-w-full divide-y divide-gray-200">
+				<table className="min-w-full divide-y divide-gray-200" data-testid="sessions-table">
 					<thead className="bg-gray-50">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr key={headerGroup.id}>
@@ -279,4 +284,4 @@ export function SessionTable({ className }: SessionTableProps) {
 			</div>
 		</div>
 	);
-}
+});

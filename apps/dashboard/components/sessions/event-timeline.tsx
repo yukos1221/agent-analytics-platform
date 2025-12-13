@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { format } from 'date-fns';
 import { EventTypeIcon } from './event-type-icon';
 import { formatDateTime } from '@/lib/utils/format';
@@ -31,11 +31,11 @@ function getEventDescription(event: Event): string {
 		case 'session_resume':
 			return 'Session resumed';
 		case 'task_start':
-			return metadata?.task_type
+			return metadata?.task_type && typeof metadata.task_type === 'string'
 				? `Started ${metadata.task_type.replace('_', ' ')} task`
 				: 'Task started';
 		case 'task_complete':
-			return metadata?.task_type
+			return metadata?.task_type && typeof metadata.task_type === 'string'
 				? `Completed ${metadata.task_type.replace('_', ' ')} task`
 				: 'Task completed';
 		case 'task_error':
@@ -78,7 +78,7 @@ function isErrorEvent(eventType: Event['event_type']): boolean {
 	return ['error', 'task_error', 'feedback_negative'].includes(eventType);
 }
 
-export function EventTimeline({ events, className }: EventTimelineProps) {
+export const EventTimeline = memo(function EventTimeline({ events, className }: EventTimelineProps) {
 	const timelineEvents = useMemo((): TimelineEvent[] => {
 		// Sort events chronologically (ascending by timestamp)
 		const sortedEvents = [...events].sort((a, b) =>
@@ -104,8 +104,8 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 		<div className={`space-y-4 ${className}`}>
 			{/* Timeline header */}
 			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-medium">Event Timeline</h3>
-				<span className="text-sm text-gray-500">
+				<h3 className="text-base sm:text-lg font-medium">Event Timeline</h3>
+				<span className="text-xs sm:text-sm text-gray-500">
 					{timelineEvents.length} events
 				</span>
 			</div>
@@ -116,6 +116,9 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 				<div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
 
 				{/* Events */}
+				{/* TODO: Phase 2 - Add virtualized list for sessions with 1000+ events */}
+				{/* TODO: Phase 2 - Add timeline zoom/filter controls */}
+				{/* TODO: Phase 2 - Add event search and highlighting */}
 				<div className="space-y-6 max-h-96 overflow-y-auto">
 					{timelineEvents.map((timelineEvent, index) => {
 						const { event, description, isError } = timelineEvent;
@@ -124,8 +127,8 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 						return (
 							<div
 								key={event.event_id}
-								className={`relative flex items-start gap-4 ${
-									isError ? 'bg-red-50 p-3 rounded-lg border border-red-200' : ''
+								className={`relative flex items-start gap-3 sm:gap-4 ${
+									isError ? 'bg-red-50 p-2 sm:p-3 rounded-lg border border-red-200' : ''
 								}`}
 							>
 								{/* Timeline dot */}
@@ -141,6 +144,7 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 											? 'bg-purple-500'
 											: 'bg-gray-500'
 									}`}
+									data-testid={`event-icon-${event.event_type}`}
 								>
 									<EventTypeIcon
 										eventType={event.event_type}
@@ -162,10 +166,12 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 										)}
 									</div>
 
-									<div className="flex items-center gap-4 text-xs text-gray-500">
-										<span>{formatDateTime(event.timestamp)}</span>
-										<span>{format(timestamp, 'HH:mm:ss')}</span>
-										<span className="font-mono">{event.event_id.slice(-8)}</span>
+									<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-gray-500">
+										<span className="truncate">{formatDateTime(event.timestamp)}</span>
+										<div className="flex gap-2 sm:gap-4">
+											<span>{format(timestamp, 'HH:mm:ss')}</span>
+											<span className="font-mono hidden sm:inline">{event.event_id.slice(-8)}</span>
+										</div>
 									</div>
 
 									{/* Show metadata for complex events */}
@@ -199,4 +205,4 @@ export function EventTimeline({ events, className }: EventTimelineProps) {
 			)}
 		</div>
 	);
-}
+});

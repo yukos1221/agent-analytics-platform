@@ -59,13 +59,13 @@ export default function DashboardPage() {
 			{/* Sidebar navigation per Frontend Spec §5.1 */}
 			<Sidebar />
 
-			{/* Main content area */}
-			<div className='flex flex-1 flex-col overflow-hidden'>
+			{/* Main content area - adjust left margin on desktop to account for sidebar */}
+			<div className='flex flex-1 flex-col overflow-hidden lg:ml-0'>
 				{/* Top header */}
 				<Header />
 
-				{/* Page content */}
-				<main className='flex-1 overflow-y-auto bg-gray-50 p-6'>
+				{/* Page content - adjust padding for mobile */}
+				<main className='flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6'>
 					<Suspense fallback={<DashboardSkeleton />}>
 						<DashboardContent />
 					</Suspense>

@@ -33,8 +33,8 @@ export default async function SessionsPage({ searchParams }: PageProps) {
 	return (
 		<div className="space-y-6">
 			<header>
-				<h1 className="text-2xl font-bold">Agent Sessions</h1>
-				<p className="text-muted-foreground">
+				<h1 className="text-xl sm:text-2xl font-bold">Agent Sessions</h1>
+				<p className="text-sm sm:text-base text-muted-foreground">
 					View and analyze AI agent sessions, their performance, and execution details
 				</p>
 			</header>

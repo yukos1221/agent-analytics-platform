@@ -67,40 +67,48 @@ export function MetricGrid({ period = '7d', initialData }: MetricGridProps) {
 
 			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
 				{/* KPI 1: Active Users (DAU) - PRD §3.1 */}
-				<MetricCard
-					title='Active Users'
-					value={metrics?.active_users?.value ?? 0}
-					change={metrics?.active_users?.change_percent ?? undefined}
-					trend={metrics?.active_users?.trend ?? undefined}
-					icon={<Users className='h-5 w-5' />}
-				/>
+				<div data-testid='metric-card-active-users'>
+					<MetricCard
+						title='Active Users'
+						value={metrics?.active_users?.value ?? 0}
+						change={metrics?.active_users?.change_percent ?? undefined}
+						trend={metrics?.active_users?.trend ?? undefined}
+						icon={<Users className='h-5 w-5' />}
+					/>
+				</div>
 
 				{/* KPI 2: Total Sessions - PRD §3.1 */}
-				<MetricCard
-					title='Total Sessions'
-					value={metrics?.total_sessions?.value ?? 0}
-					change={metrics?.total_sessions?.change_percent ?? undefined}
-					trend={metrics?.total_sessions?.trend ?? undefined}
-					icon={<Activity className='h-5 w-5' />}
-				/>
+				<div data-testid='metric-card-total-sessions'>
+					<MetricCard
+						title='Total Sessions'
+						value={metrics?.total_sessions?.value ?? 0}
+						change={metrics?.total_sessions?.change_percent ?? undefined}
+						trend={metrics?.total_sessions?.trend ?? undefined}
+						icon={<Activity className='h-5 w-5' />}
+					/>
+				</div>
 
 				{/* KPI 3: Success Rate - PRD §3.2 */}
-				<MetricCard
-					title='Success Rate'
-					value={formatPercent(metrics?.success_rate?.value ?? 0)}
-					change={metrics?.success_rate?.change_percent ?? undefined}
-					trend={metrics?.success_rate?.trend ?? undefined}
-					icon={<CheckCircle className='h-5 w-5' />}
-				/>
+				<div data-testid='metric-card-success-rate'>
+					<MetricCard
+						title='Success Rate'
+						value={formatPercent(metrics?.success_rate?.value ?? 0)}
+						change={metrics?.success_rate?.change_percent ?? undefined}
+						trend={metrics?.success_rate?.trend ?? undefined}
+						icon={<CheckCircle className='h-5 w-5' />}
+					/>
+				</div>
 
 				{/* KPI 4: Estimated Cost (MTD Spend) - PRD §3.3 */}
-				<MetricCard
-					title='Estimated Cost'
-					value={formatCurrency(metrics?.total_cost?.value ?? 0)}
-					change={metrics?.total_cost?.change_percent ?? undefined}
-					trend={metrics?.total_cost?.trend ?? undefined}
-					icon={<DollarSign className='h-5 w-5' />}
-				/>
+				<div data-testid='metric-card-estimated-cost'>
+					<MetricCard
+						title='Estimated Cost'
+						value={formatCurrency(metrics?.total_cost?.value ?? 0)}
+						change={metrics?.total_cost?.change_percent ?? undefined}
+						trend={metrics?.total_cost?.trend ?? undefined}
+						icon={<DollarSign className='h-5 w-5' />}
+					/>
+				</div>
 			</div>
 		</div>
 	);

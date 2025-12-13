@@ -65,6 +65,10 @@ export function DashboardOverview({
 			/>
 
 			{/* Charts section per PRD §5.2 */}
+			{/* TODO: Phase 2 - Connect charts to real timeseries API data */}
+			{/* TODO: Phase 2 - Add interactive chart drill-down */}
+			{/* TODO: Phase 2 - Add chart export functionality */}
+			{/* TODO: Phase 2 - Add real-time chart updates via WebSocket */}
 			<div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
 				{/* Sessions over time - Line chart per PRD */}
 				<ActivityChart title='Sessions Over Time' type='sessions' />

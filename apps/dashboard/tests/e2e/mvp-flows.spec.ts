@@ -179,99 +179,96 @@ test.describe('Flow 1: Dashboard Metrics Display @mvp', () => {
 });
 
 /**
- * Flow 2: Navigate to Sessions List and View Details
+ * Flow 2: Dashboard → Sessions list → Session detail
  *
  * Per Testing Spec §1.5 MVP E2E scope:
  * "Dashboard → Sessions list → Session detail"
  *
- * This test is optional and will be skipped if sessions endpoints don't exist.
- * Use test.skip() or conditional logic based on API availability.
+ * This test validates:
+ * - Navigation from dashboard to sessions list
+ * - Sessions list displays correctly with seeded data
+ * - Clicking a session navigates to detail view
+ * - Session detail shows header and EventTimeline
  *
- * Tagged as @mvp @optional for easy filtering
+ * Tagged as @mvp for easy filtering
  */
-test.describe('Flow 2: Sessions List and Detail @mvp @optional', () => {
-	test.skip('navigate to sessions list and view session details', async ({
+test.describe('Flow 2: Sessions List and Detail @mvp', () => {
+	test('navigate to sessions list and view session details', async ({
 		page,
 	}) => {
-		// Step 1: Start at dashboard
+		// Step 1: Start at dashboard (same auth bootstrap as Flow 1)
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
 
-		// Step 2: Navigate to sessions list
-		// Look for navigation link or button
-		const sessionsLink = page.getByRole('link', { name: /sessions/i });
-		if (await sessionsLink.isVisible().catch(() => false)) {
-			await sessionsLink.click();
+		// Step 2: Navigate to sessions list from sidebar
+		const sessionsLink = page.getByRole('link', { name: 'Sessions' });
+		await expect(sessionsLink).toBeVisible();
+		await sessionsLink.click();
 
-			// Step 3: Wait for sessions list to load
-			await page.waitForLoadState('networkidle');
-			await expect(page).toHaveURL(/\/sessions/);
+		// Step 3: Wait for sessions list to load
+		await page.waitForLoadState('networkidle');
+		await expect(page).toHaveURL('/dashboard/sessions');
 
-			// Step 4: Verify sessions table/list is visible
-			const sessionsTable = page.locator('[data-testid="sessions-table"]');
-			if (await sessionsTable.isVisible().catch(() => false)) {
-				await expect(sessionsTable).toBeVisible();
+		// Step 4: Verify sessions table is visible and has data
+		const sessionsTable = page.locator('[data-testid="sessions-table"]');
+		await expect(sessionsTable).toBeVisible({ timeout: 15000 });
 
-				// Step 5: Click first session to view details
-				const firstSession = page
-					.locator('[data-testid="session-row"]')
-					.first();
-				if ((await firstSession.count()) > 0) {
-					await firstSession.click();
+		// Verify at least one session row is present (from seeded data)
+		const sessionRows = page.locator('[data-testid*="session-row-"]');
+		await expect(sessionRows.first()).toBeVisible();
 
-					// Step 6: Verify session detail page loads
-					await expect(page).toHaveURL(/\/sessions\/sess_/);
+		// Step 5: Click on the first session row
+		const firstSession = sessionRows.first();
+		await firstSession.click();
 
-					// Step 7: Verify key session info is visible
-					await expect(page.getByTestId('session-status')).toBeVisible({
-						timeout: 10000,
-					});
-					await expect(page.getByTestId('session-duration')).toBeVisible();
-				}
-			}
-		} else {
-			// Sessions feature not implemented yet - skip test
-			test.skip();
-		}
+		// Step 6: Verify navigation to session detail page
+		await expect(page).toHaveURL(/\/dashboard\/sessions\/sess_/);
+
+		// Step 7: Verify SessionDetailHeader is visible with correct metadata
+		await expect(page.getByRole('heading', { name: 'Session Details' })).toBeVisible();
+
+		// Verify session status badge is visible (from SessionDetailHeader)
+		const statusBadge = page.locator('[data-testid="session-status"]').first();
+		await expect(statusBadge).toBeVisible();
+
+		// Step 8: Verify EventTimeline is rendered with at least one event
+		const eventTimeline = page.locator('text=Event Timeline');
+		await expect(eventTimeline).toBeVisible({ timeout: 15000 });
+
+		// Verify at least one event is displayed (from seeded events)
+		const timelineEvents = page.locator('[data-testid*="event-icon-"]');
+		const eventCount = await timelineEvents.count();
+		expect(eventCount).toBeGreaterThan(0);
+
+		// Verify chronological ordering (first event should be session_start)
+		const firstEventIcon = page.locator('[data-testid="event-icon-session_start"]').first();
+		await expect(firstEventIcon).toBeVisible();
 	});
 });
 
 /**
- * Flow 3: Date Range Filter Updates Metrics
+ * Flow 3: Date Range Filter Updates All Data
  *
  * Per Testing Spec §1.5 MVP E2E scope:
  * "Date range filter updates all data"
  *
  * This test validates that changing the period selector updates
- * all metrics and charts on the dashboard.
+ * both KPI metrics AND charts with new data from the API.
  *
  * Tagged as @mvp for easy filtering
  */
 test.describe('Flow 3: Date Range Filter @mvp', () => {
-	test('date range filter updates all metrics', async ({ page }) => {
-		// Step 1: Navigate to dashboard
+	test('date range filter updates KPIs and charts with new data', async ({ page }) => {
+		// Step 1: Navigate to dashboard (reuse Flow 1 setup)
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
 
-		// Step 2: Wait for API call to complete (any response)
-		let apiResponded = false;
-		try {
-			await page.waitForResponse(
-				(response) => response.url().includes('/v1/metrics/overview'),
-				{ timeout: 45000 }
-			);
-			apiResponded = true;
-		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.warn('Metrics API call did not complete');
-		}
-
-		// Wait for React to render
-		if (apiResponded) {
-			await page.waitForLoadState('networkidle');
-		} else {
-			await page.waitForLoadState('domcontentloaded');
-		}
+		// Step 2: Wait for initial metrics to load
+		await page.waitForResponse(
+			(response) => response.url().includes('/v1/metrics/overview'),
+			{ timeout: 45000 }
+		);
+		await page.waitForLoadState('networkidle');
 
 		// Check for error state
 		const hasError = await page
@@ -283,102 +280,87 @@ test.describe('Flow 3: Date Range Filter @mvp', () => {
 			return;
 		}
 
-		await expect(page.getByText('Active Users', { exact: false })).toBeVisible({
-			timeout: 20000,
-		});
+		// Step 3: Verify initial dashboard state (7d period)
+		await expect(page.getByText('Dashboard Overview')).toBeVisible();
+		await expect(page.locator('[data-testid="metric-card-active-users"]')).toBeVisible();
+		await expect(page.locator('[data-testid="metric-card-total-sessions"]')).toBeVisible();
+		await expect(page.locator('[data-testid="metric-card-success-rate"]')).toBeVisible();
+		await expect(page.locator('[data-testid="metric-card-estimated-cost"]')).toBeVisible();
 
-		// Step 3: Capture initial metric values (for potential comparison)
-		const initialContent = await page.locator('main').textContent();
-		const _initialActiveUsers = extractNumber(
-			initialContent || '',
-			'Active Users'
+		// Step 4: Capture initial metric values (7d period)
+		const initialTotalSessions = await page
+			.locator('[data-testid="metric-card-total-sessions"]')
+			.textContent();
+		const initialActiveUsers = await page
+			.locator('[data-testid="metric-card-active-users"]')
+			.textContent();
+		const initialSuccessRate = await page
+			.locator('[data-testid="metric-card-success-rate"]')
+			.textContent();
+
+		// Step 5: Change period from 7d to 30d using the period selector
+		const periodSelector = page.locator('[data-testid="period-selector"]');
+		await expect(periodSelector).toBeVisible();
+
+		// Select 30d option
+		await periodSelector.selectOption('30d');
+
+		// Step 6: Wait for metrics API call to complete with new period
+		await page.waitForResponse(
+			(response) => response.url().includes('/v1/metrics/overview') &&
+				response.url().includes('period=30d'),
+			{ timeout: 15000 }
 		);
-		const _initialSessions = extractNumber(
-			initialContent || '',
-			'Total Sessions'
+
+		// Wait for UI to update
+		await page.waitForTimeout(1000);
+
+		// Step 7: Verify KPIs updated with new data
+		const updatedTotalSessions = await page
+			.locator('[data-testid="metric-card-total-sessions"]')
+			.textContent();
+		const updatedActiveUsers = await page
+			.locator('[data-testid="metric-card-active-users"]')
+			.textContent();
+		const updatedSuccessRate = await page
+			.locator('[data-testid="metric-card-success-rate"]')
+			.textContent();
+
+		// Values should be different (30d includes more data than 7d)
+		// Based on seeded data: 7d = 8 sessions, 30d = 11 sessions
+		expect(updatedTotalSessions).not.toBe(initialTotalSessions);
+		expect(updatedActiveUsers).not.toBe(initialActiveUsers);
+		expect(updatedSuccessRate).not.toBe(initialSuccessRate);
+
+		// Step 8: Verify charts section is still present
+		// Note: Charts use mock data in MVP, but the structure should remain
+		await expect(page.getByText('Sessions Over Time')).toBeVisible();
+		await expect(page.getByText('Errors by Type')).toBeVisible();
+
+		// Step 9: Verify period selector shows 30d as selected
+		await expect(periodSelector).toHaveValue('30d');
+
+		// Step 10: Test switching back to 7d to ensure data changes again
+		await periodSelector.selectOption('7d');
+
+		await page.waitForResponse(
+			(response) => response.url().includes('/v1/metrics/overview') &&
+				response.url().includes('period=7d'),
+			{ timeout: 15000 }
 		);
 
-		// Step 4: Change period to 30d
-		// Look for period selector (dropdown or button group)
-		const periodSelector = page
-			.locator(
-				'[data-testid="period-selector"], button:has-text("30d"), select[name*="period"]'
-			)
-			.first();
+		await page.waitForTimeout(1000);
 
-		if (await periodSelector.isVisible().catch(() => false)) {
-			await periodSelector.click();
+		// Values should change back to original values
+		const finalTotalSessions = await page
+			.locator('[data-testid="metric-card-total-sessions"]')
+			.textContent();
+		const finalActiveUsers = await page
+			.locator('[data-testid="metric-card-active-users"]')
+			.textContent();
 
-			// If it's a dropdown, select 30d option
-			const option30d = page.getByRole('option', { name: '30d' });
-			if (await option30d.isVisible().catch(() => false)) {
-				await option30d.click();
-			} else {
-				// Try clicking button directly
-				const button30d = page.getByRole('button', { name: '30d' });
-				if (await button30d.isVisible().catch(() => false)) {
-					await button30d.click();
-				}
-			}
-
-			// Step 5: Wait for metrics to refresh
-			await page.waitForResponse(
-				(resp) => resp.url().includes('/metrics/overview'),
-				{ timeout: 10000 }
-			);
-
-			// Step 6: Verify URL updated (if using query params)
-			// This may not be implemented in MVP, so make it optional
-			const url = page.url();
-			if (url.includes('period=')) {
-				expect(url).toContain('period=30d');
-			}
-
-			// Step 7: Verify metrics have updated (may be same or different)
-			// Wait for content to update
-			await page.waitForTimeout(1000); // Allow for re-render
-
-			const updatedContent = await page.locator('main').textContent();
-			const updatedActiveUsers = extractNumber(
-				updatedContent || '',
-				'Active Users'
-			);
-			const updatedSessions = extractNumber(
-				updatedContent || '',
-				'Total Sessions'
-			);
-
-			// Metrics should still be visible (not empty)
-			expect(updatedActiveUsers).not.toBeNull();
-			expect(updatedSessions).not.toBeNull();
-
-			// Note: Values may be same or different depending on seeded data
-			// The important thing is that the API was called and metrics refreshed
-		} else {
-			// Period selector not implemented yet - skip this part
-			// eslint-disable-next-line no-console -- Debug logging for test debugging
-			console.log('Period selector not found - feature may not be implemented');
-		}
+		expect(finalTotalSessions).toBe(initialTotalSessions);
+		expect(finalActiveUsers).toBe(initialActiveUsers);
 	});
 });
 
-/**
- * Helper function to extract numeric value from text content
- * Looks for numbers near a label (e.g., "Active Users" followed by "1,247")
- */
-function extractNumber(text: string, label: string): number | null {
-	const labelIndex = text.indexOf(label);
-	if (labelIndex === -1) return null;
-
-	// Look for number after the label (within next 100 chars)
-	const afterLabel = text.substring(
-		labelIndex + label.length,
-		labelIndex + 200
-	);
-	const numberMatch = afterLabel.match(/(\d{1,3}(?:,\d{3})*(?:\.\d+)?)/);
-	if (numberMatch) {
-		return parseFloat(numberMatch[1].replace(/,/g, ''));
-	}
-
-	return null;
-}

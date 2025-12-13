@@ -121,18 +121,16 @@ function SessionDetailSkeleton() {
 function SessionErrorState({ error }: { error: Error }) {
 	return (
 		<div className="space-y-6">
-			<Card>
-				<CardContent className="pt-6">
-					<div className="text-center py-8">
-						<div className="text-red-500 mb-4">
-							Failed to load session details
-						</div>
-						<div className="text-sm text-muted-foreground">
-							{error.message}
-						</div>
+			<div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+				<div className="text-center py-8">
+					<div className="text-red-500 mb-4">
+						Failed to load session details
 					</div>
-				</CardContent>
-			</Card>
+					<div className="text-sm text-gray-500">
+						{error.message}
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -202,10 +200,10 @@ export default async function SessionDetailPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="container mx-auto py-6">
-			<div className="mb-6">
-				<h1 className="text-2xl font-bold">Session Details</h1>
-				<p className="text-muted-foreground">
+		<div className="container mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+			<div className="mb-4 sm:mb-6">
+				<h1 className="text-xl sm:text-2xl font-bold">Session Details</h1>
+				<p className="text-sm sm:text-base text-muted-foreground">
 					View detailed information and metrics for this session
 				</p>
 			</div>

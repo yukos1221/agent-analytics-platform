@@ -61,3 +61,19 @@ export function formatDuration(milliseconds: number): string {
 
 	return parts.join(' ');
 }
+
+/**
+ * Format a date/time string for display
+ * Uses consistent locale to prevent hydration mismatches
+ */
+export function formatDateTime(dateString: string): string {
+	const date = new Date(dateString);
+	return date.toLocaleString(LOCALE, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+	});
+}
