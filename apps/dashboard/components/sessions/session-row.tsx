@@ -15,7 +15,7 @@ export function SessionRow({ session, className }: SessionRowProps) {
 	const router = useRouter();
 
 	const handleClick = () => {
-		router.push(`/sessions/${session.session_id}`);
+		router.push(`/dashboard/sessions/${session.session_id}`);
 	};
 
 	const formatDateTime = (dateString: string) => {
@@ -32,53 +32,57 @@ export function SessionRow({ session, className }: SessionRowProps) {
 	return (
 		<tr
 			onClick={handleClick}
-			className="cursor-pointer border-b border-gray-200 hover:bg-gray-50"
+			className='cursor-pointer border-b border-gray-200 hover:bg-gray-50'
 			data-testid={`session-row-${session.session_id}`}
 		>
 			{/* Date/Time */}
-			<td className="px-6 py-4">
-				<div className="text-sm">
-					<div className="font-medium text-gray-900">{dateTime.date}</div>
-					<div className="text-gray-500">{dateTime.time}</div>
+			<td className='px-6 py-4'>
+				<div className='text-sm'>
+					<div className='font-medium text-gray-900'>{dateTime.date}</div>
+					<div className='text-gray-500'>{dateTime.time}</div>
 				</div>
 			</td>
 
 			{/* Status */}
-			<td className="px-6 py-4">
+			<td className='px-6 py-4'>
 				<SessionStatusBadge status={session.status} />
 			</td>
 
 			{/* Duration */}
-			<td className="px-6 py-4">
+			<td className='px-6 py-4'>
 				<SessionDuration
 					durationSeconds={session.duration_seconds}
-					className="text-sm text-gray-900"
+					className='text-sm text-gray-900'
 				/>
 			</td>
 
 			{/* Agent */}
-			<td className="px-6 py-4">
-				<div className="text-sm">
-					<div className="font-medium text-gray-900">{session.agent_id}</div>
-					<div className="text-gray-500 capitalize">{session.environment}</div>
+			<td className='px-6 py-4'>
+				<div className='text-sm'>
+					<div className='font-medium text-gray-900'>{session.agent_id}</div>
+					<div className='text-gray-500 capitalize'>{session.environment}</div>
 				</div>
 			</td>
 
 			{/* User */}
-			<td className="px-6 py-4">
-				<div className="text-sm">
-					<div className="font-medium text-gray-900">{session.user.name}</div>
-					<div className="text-gray-500">{session.user.email}</div>
+			<td className='px-6 py-4'>
+				<div className='text-sm'>
+					<div className='font-medium text-gray-900'>
+						{session.user?.name || `User ${session.user_id.slice(-4)}`}
+					</div>
+					<div className='text-gray-500'>
+						{session.user?.email || session.user_id}
+					</div>
 				</div>
 			</td>
 
 			{/* Metrics */}
-			<td className="px-6 py-4">
-				<div className="text-sm">
-					<div className="font-medium text-gray-900">
+			<td className='px-6 py-4'>
+				<div className='text-sm'>
+					<div className='font-medium text-gray-900'>
 						{session.metrics.tasks_completed} tasks
 					</div>
-					<div className="text-gray-500">
+					<div className='text-gray-500'>
 						{session.metrics.tokens_used.toLocaleString()} tokens
 					</div>
 				</div>

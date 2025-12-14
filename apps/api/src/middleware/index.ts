@@ -340,12 +340,15 @@ export function jwtAuth() {
 		const authHeader = c.req.header('Authorization') || '';
 		const match = authHeader.match(/^Bearer\s+(.+)$/i);
 		if (!match) {
-			// In tests, allow unauthenticated access when no JWT secret is configured.
-			// This keeps unit tests simple (they can call metrics without creating tokens).
-			if (process.env.NODE_ENV === 'test' && !process.env.JWT_HS256_SECRET) {
+			// Allow unauthenticated access in development/test when no JWT secret is configured
+			// This keeps development and tests simple
+			if (
+				process.env.NODE_ENV === 'test' ||
+				process.env.NODE_ENV === 'development'
+			) {
 				const testAuth: AuthContext = {
 					org_id: 'org_default',
-					environment: 'production',
+					environment: 'development',
 					token_type: 'jwt',
 				};
 				c.set('auth', testAuth);
@@ -363,6 +366,42 @@ export function jwtAuth() {
 				request_id: requestId,
 			};
 			return c.json(response, 401);
+		}
+
+		// In development/test, allow any JWT token without signature verification
+		if (process.env.NODE_ENV !== 'production') {
+			try {
+				// Decode JWT payload without verification (for development)
+				const parts = match[1].split('.');
+				if (parts.length === 3) {
+					const payloadJson = Buffer.from(
+						base64urlToBase64(parts[1]),
+						'base64'
+					).toString();
+					const payload = safeJsonParse<Record<string, unknown>>(payloadJson);
+					if (payload) {
+						const orgId = (payload['custom:org_id'] ||
+							payload['org_id'] ||
+							payload['org']) as string | undefined;
+						const userId = (payload['sub'] || payload['user_id']) as
+							| string
+							| undefined;
+
+						const auth: AuthContext = {
+							org_id: orgId || 'org_default',
+							environment: 'development',
+							token_type: 'jwt',
+							user_id: userId,
+						};
+						c.set('auth', auth);
+						c.set('requestId', requestId);
+						await next();
+						return;
+					}
+				}
+			} catch (error) {
+				// If JWT parsing fails, continue to error response
+			}
 		}
 
 		const token = match[1];

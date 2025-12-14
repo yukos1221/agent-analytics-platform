@@ -148,11 +148,12 @@ export const eventStore = new InMemoryEventStore();
 // This will be removed when real data ingestion is implemented
 async function seedSampleData() {
 	const sampleEvents = [
+		// Session 1: Completed, agent_test, production (2 days ago)
 		{
 			event_id: 'evt_sample_001',
 			event_type: 'session_start',
-			timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-			session_id: 'sess_sample_001',
+			timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+			session_id: 'sess_abcd1234abcd1234abcd',
 			user_id: 'user_admin123',
 			agent_id: 'agent_test',
 			environment: 'production',
@@ -164,7 +165,7 @@ async function seedSampleData() {
 			timestamp: new Date(
 				Date.now() - 2 * 24 * 60 * 60 * 1000 + 60000
 			).toISOString(),
-			session_id: 'sess_sample_001',
+			session_id: 'sess_abcd1234abcd1234abcd',
 			user_id: 'user_admin123',
 			agent_id: 'agent_test',
 			environment: 'production',
@@ -181,20 +182,21 @@ async function seedSampleData() {
 			timestamp: new Date(
 				Date.now() - 2 * 24 * 60 * 60 * 1000 + 120000
 			).toISOString(),
-			session_id: 'sess_sample_001',
+			session_id: 'sess_abcd1234abcd1234abcd',
 			user_id: 'user_admin123',
 			agent_id: 'agent_test',
 			environment: 'production',
 			metadata: {},
 		},
+		// Session 2: Completed, agent_claude, staging (1 day ago)
 		{
 			event_id: 'evt_sample_004',
 			event_type: 'session_start',
-			timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-			session_id: 'sess_sample_002',
-			user_id: 'user_admin123',
-			agent_id: 'agent_test',
-			environment: 'production',
+			timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+			session_id: 'sess_efgh5678efgh5678efgh',
+			user_id: 'user_dev456',
+			agent_id: 'agent_claude',
+			environment: 'staging',
 			metadata: {},
 		},
 		{
@@ -203,10 +205,10 @@ async function seedSampleData() {
 			timestamp: new Date(
 				Date.now() - 1 * 24 * 60 * 60 * 1000 + 30000
 			).toISOString(),
-			session_id: 'sess_sample_002',
-			user_id: 'user_admin123',
-			agent_id: 'agent_test',
-			environment: 'production',
+			session_id: 'sess_efgh5678efgh5678efgh',
+			user_id: 'user_dev456',
+			agent_id: 'agent_claude',
+			environment: 'staging',
 			metadata: {
 				tokens_input: 800,
 				tokens_output: 1200,
@@ -220,9 +222,116 @@ async function seedSampleData() {
 			timestamp: new Date(
 				Date.now() - 1 * 24 * 60 * 60 * 1000 + 90000
 			).toISOString(),
-			session_id: 'sess_sample_002',
+			session_id: 'sess_efgh5678efgh5678efgh',
+			user_id: 'user_dev456',
+			agent_id: 'agent_claude',
+			environment: 'staging',
+			metadata: {},
+		},
+		// Session 3: Error, agent_gpt, development (6 hours ago)
+		{
+			event_id: 'evt_sample_007',
+			event_type: 'session_start',
+			timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+			session_id: 'sess_ijkl9012ijkl9012ijkl',
+			user_id: 'user_test789',
+			agent_id: 'agent_gpt',
+			environment: 'development',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_008',
+			event_type: 'task_error',
+			timestamp: new Date(
+				Date.now() - 6 * 60 * 60 * 1000 + 45000
+			).toISOString(),
+			session_id: 'sess_ijkl9012ijkl9012ijkl',
+			user_id: 'user_test789',
+			agent_id: 'agent_gpt',
+			environment: 'development',
+			metadata: {
+				tokens_input: 500,
+				tokens_output: 200,
+				duration_ms: 30000,
+				error_code: 'TIMEOUT',
+				error_message: 'Request timeout',
+			},
+		},
+		{
+			event_id: 'evt_sample_009',
+			event_type: 'session_end',
+			timestamp: new Date(
+				Date.now() - 6 * 60 * 60 * 1000 + 60000
+			).toISOString(),
+			session_id: 'sess_ijkl9012ijkl9012ijkl',
+			user_id: 'user_test789',
+			agent_id: 'agent_gpt',
+			environment: 'development',
+			metadata: {},
+		},
+		// Session 4: Active, agent_test, production (30 minutes ago)
+		{
+			event_id: 'evt_sample_010',
+			event_type: 'session_start',
+			timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+			session_id: 'sess_mnop3456mnop3456mnop',
 			user_id: 'user_admin123',
 			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_011',
+			event_type: 'task_complete',
+			timestamp: new Date(Date.now() - 30 * 60 * 1000 + 30000).toISOString(),
+			session_id: 'sess_mnop3456mnop3456mnop',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {
+				tokens_input: 1200,
+				tokens_output: 2800,
+				duration_ms: 25000,
+				success: true,
+			},
+		},
+		// Session 5: Completed, agent_claude, production (3 hours ago)
+		{
+			event_id: 'evt_sample_012',
+			event_type: 'session_start',
+			timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+			session_id: 'sess_qrst7890qrst7890qrst',
+			user_id: 'user_prod001',
+			agent_id: 'agent_claude',
+			environment: 'production',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_013',
+			event_type: 'task_complete',
+			timestamp: new Date(
+				Date.now() - 3 * 60 * 60 * 1000 + 45000
+			).toISOString(),
+			session_id: 'sess_qrst7890qrst7890qrst',
+			user_id: 'user_prod001',
+			agent_id: 'agent_claude',
+			environment: 'production',
+			metadata: {
+				tokens_input: 2000,
+				tokens_output: 4500,
+				duration_ms: 40000,
+				success: true,
+			},
+		},
+		{
+			event_id: 'evt_sample_014',
+			event_type: 'session_end',
+			timestamp: new Date(
+				Date.now() - 3 * 60 * 60 * 1000 + 60000
+			).toISOString(),
+			session_id: 'sess_qrst7890qrst7890qrst',
+			user_id: 'user_prod001',
+			agent_id: 'agent_claude',
 			environment: 'production',
 			metadata: {},
 		},
@@ -232,7 +341,9 @@ async function seedSampleData() {
 }
 
 // Seed sample data on startup
-seedSampleData().catch(console.error);
+setTimeout(() => {
+	seedSampleData().catch(console.error);
+}, 1000);
 
 // Expose the in-memory store on globalThis to allow packages outside the
 // app (e.g., packages/database) to access the same singleton instance

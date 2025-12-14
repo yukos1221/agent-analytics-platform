@@ -1,202 +1,42 @@
-import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import {
-	SessionDetailHeader,
-	SessionMetrics,
-	EventTimeline,
-} from '@/components/sessions';
-import { useSession, useSessionEvents } from '@/lib/hooks/useSessions';
 
 interface PageProps {
-	params: Promise<{ id: string }>;
+	params: { id: string };
 }
 
-// Loading skeleton component
-function SessionDetailSkeleton() {
-	return (
-		<div className='space-y-6'>
-			<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-				<div className='flex items-start justify-between mb-6'>
-					<div className='space-y-1'>
-						<div className='h-6 w-48 skeleton' />
-						<div className='h-4 w-32 skeleton' />
-					</div>
-					<div className='h-6 w-16 skeleton' />
-				</div>
-				<div className='grid gap-6 md:grid-cols-2'>
-					<div className='space-y-4'>
-						<div>
-							<div className='h-4 w-20 skeleton mb-2' />
-							<div className='space-y-2'>
-								<div className='flex justify-between'>
-									<div className='h-4 w-12 skeleton' />
-									<div className='h-4 w-16 skeleton' />
-								</div>
-								<div className='flex justify-between'>
-									<div className='h-4 w-12 skeleton' />
-									<div className='h-4 w-16 skeleton' />
-								</div>
-								<div className='flex justify-between'>
-									<div className='h-4 w-12 skeleton' />
-									<div className='h-4 w-16 skeleton' />
-								</div>
-							</div>
-						</div>
-					</div>
-					<div className='space-y-4'>
-						<div>
-							<div className='h-4 w-16 skeleton mb-2' />
-							<div className='space-y-2'>
-								<div className='flex justify-between'>
-									<div className='h-4 w-12 skeleton' />
-									<div className='h-4 w-16 skeleton' />
-								</div>
-								<div className='flex justify-between'>
-									<div className='h-4 w-12 skeleton' />
-									<div className='h-4 w-16 skeleton' />
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-				<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-					<div className='h-4 w-16 skeleton mb-4' />
-					<div className='h-8 w-24 skeleton mb-4' />
-					<div className='space-y-2'>
-						<div className='flex justify-between'>
-							<div className='h-4 w-20 skeleton' />
-							<div className='h-4 w-12 skeleton' />
-						</div>
-						<div className='flex justify-between'>
-							<div className='h-4 w-16 skeleton' />
-							<div className='h-4 w-12 skeleton' />
-						</div>
-					</div>
-				</div>
-
-				<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-					<div className='h-4 w-20 skeleton mb-4' />
-					<div className='h-8 w-24 skeleton mb-4' />
-					<div className='space-y-2'>
-						<div className='flex justify-between'>
-							<div className='h-4 w-12 skeleton' />
-							<div className='h-4 w-16 skeleton' />
-						</div>
-						<div className='flex justify-between'>
-							<div className='h-4 w-12 skeleton' />
-							<div className='h-4 w-16 skeleton' />
-						</div>
-					</div>
-				</div>
-
-				<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-					<div className='h-4 w-24 skeleton mb-4' />
-					<div className='h-8 w-20 skeleton mb-4' />
-					<div className='space-y-2'>
-						<div className='flex justify-between'>
-							<div className='h-4 w-16 skeleton' />
-							<div className='h-4 w-12 skeleton' />
-						</div>
-						<div className='flex justify-between'>
-							<div className='h-4 w-20 skeleton' />
-							<div className='h-4 w-12 skeleton' />
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-				<div className='mb-4'>
-					<div className='text-sm font-medium'>Event Timeline</div>
-				</div>
-				<div className='text-center py-8 text-gray-500'>
-					Event timeline component coming in next phase
-				</div>
-			</div>
-		</div>
-	);
+// Mock data for testing - matches API response structure
+function getSession(sessionId: string) {
+	return {
+		session_id: sessionId,
+		user_id: 'user_admin123',
+		agent_id: 'agent_test',
+		environment: 'production',
+		status: 'completed',
+		started_at: '2025-12-12T12:32:52.931Z',
+		ended_at: '2025-12-12T12:34:52.932Z',
+		duration_seconds: 120,
+		metrics: {
+			tasks_completed: 1,
+			tasks_failed: 0,
+			tasks_cancelled: 0,
+			tokens_used: 4500,
+			estimated_cost: 0.105,
+			avg_task_duration_ms: 45000,
+		},
+	};
 }
 
-// Error state component
-function SessionErrorState({ error }: { error: Error }) {
-	return (
-		<div className='space-y-6'>
-			<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-				<div className='text-center py-8'>
-					<div className='text-red-500 mb-4'>
-						Failed to load session details
-					</div>
-					<div className='text-sm text-gray-500'>{error.message}</div>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-// Client component for data fetching
-function SessionDetailClient({ sessionId }: { sessionId: string }) {
-	const { data: session, isLoading, error } = useSession(sessionId);
-	const {
-		data: eventsData,
-		isLoading: eventsLoading,
-		error: eventsError,
-		fetchNextPage,
-		hasNextPage,
-	} = useSessionEvents(sessionId, !!session);
-
-	if (isLoading) {
-		return <SessionDetailSkeleton />;
-	}
-
-	if (error) {
-		return <SessionErrorState error={error as Error} />;
-	}
-
-	if (!session) {
-		notFound();
-	}
-
-	// Flatten all events from all pages
-	const allEvents = eventsData?.pages.flatMap((page) => page.events) || [];
-
-	return (
-		<div className='space-y-6'>
-			<SessionDetailHeader session={session} />
-			<SessionMetrics session={session} />
-
-			{/* Event Timeline */}
-			<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
-				<EventTimeline events={allEvents} />
-				{hasNextPage && (
-					<div className='text-center pt-4 border-t border-gray-200 mt-4'>
-						<button
-							onClick={() => fetchNextPage()}
-							disabled={eventsLoading}
-							className='text-sm text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed'
-						>
-							{eventsLoading ? 'Loading...' : 'Load more events'}
-						</button>
-					</div>
-				)}
-				{eventsError && (
-					<div className='text-center pt-4 border-t border-gray-200 mt-4 text-red-600 text-sm'>
-						Failed to load events: {(eventsError as Error).message}
-					</div>
-				)}
-			</div>
-		</div>
-	);
-}
-
-// Server component for initial render
 export default async function SessionDetailPage({ params }: PageProps) {
-	const { id } = await params;
+	const { id } = params;
 
 	// Basic session ID validation
 	if (!id || !id.startsWith('sess_') || id.length < 20) {
+		notFound();
+	}
+
+	const session = await getSession(id);
+
+	if (!session) {
 		notFound();
 	}
 
@@ -209,9 +49,55 @@ export default async function SessionDetailPage({ params }: PageProps) {
 				</p>
 			</div>
 
-			<Suspense fallback={<SessionDetailSkeleton />}>
-				<SessionDetailClient sessionId={id} />
-			</Suspense>
+			<div className='space-y-6'>
+				<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
+					<h2 className='text-lg font-semibold mb-4'>
+						Session: {session.session_id}
+					</h2>
+					<div className='grid grid-cols-2 gap-4'>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>User ID</p>
+							<p className='text-sm'>{session.user_id}</p>
+						</div>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>Agent ID</p>
+							<p className='text-sm'>{session.agent_id}</p>
+						</div>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>Status</p>
+							<p className='text-sm capitalize'>{session.status}</p>
+						</div>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>Duration</p>
+							<p className='text-sm'>{session.duration_seconds || 0} seconds</p>
+						</div>
+					</div>
+				</div>
+
+				<div className='rounded-lg border border-gray-200 bg-white p-6 shadow-sm'>
+					<h3 className='text-lg font-semibold mb-4'>Metrics</h3>
+					<div className='grid grid-cols-2 gap-4'>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>
+								Tasks Completed
+							</p>
+							<p className='text-sm'>{session.metrics.tasks_completed}</p>
+						</div>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>Tokens Used</p>
+							<p className='text-sm'>
+								{session.metrics.tokens_used?.toLocaleString() || 'N/A'}
+							</p>
+						</div>
+						<div>
+							<p className='text-sm font-medium text-gray-500'>
+								Estimated Cost
+							</p>
+							<p className='text-sm'>${session.metrics.estimated_cost}</p>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

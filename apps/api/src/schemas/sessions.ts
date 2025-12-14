@@ -13,7 +13,17 @@ export type SessionStatus = z.infer<typeof SessionStatusSchema>;
 export const SessionListQuerySchema = z.object({
 	start_time: z.string().datetime().optional(),
 	end_time: z.string().datetime().optional(),
-	status: SessionStatusSchema.optional(),
+	status: z
+		.union([
+			z.string().transform((val) => val.split(',').filter((s) => s.length > 0)),
+			z.array(SessionStatusSchema),
+		])
+		.optional()
+		.transform((val) => {
+			if (!val) return undefined;
+			if (Array.isArray(val)) return val;
+			return val as SessionStatus[];
+		}),
 	agent_id: z.string().optional(),
 	user_id: z.string().optional(),
 	sort: z
@@ -151,4 +161,3 @@ export const SessionDetailResponseSchema = SessionSummarySchema.extend({
 });
 
 export type SessionDetailResponse = z.infer<typeof SessionDetailResponseSchema>;
-

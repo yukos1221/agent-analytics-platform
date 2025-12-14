@@ -1,13 +1,9 @@
 import { Suspense } from 'react';
-import { getMetricsOverview } from '@/lib/api/metrics';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import {
 	DashboardOverview,
 	MetricGridSkeleton,
 	ActivityChartSkeleton,
 } from '@/components/dashboard';
-import type { MetricsOverviewResponse } from '@/types/api';
 
 export const metadata = {
 	title: 'Dashboard Overview | AI Agent Analytics',
@@ -44,22 +40,10 @@ function DashboardContent() {
 
 export default function DashboardPage() {
 	return (
-		<div className='flex h-screen overflow-hidden'>
-			{/* Sidebar navigation per Frontend Spec §5.1 */}
-			<Sidebar />
-
-			{/* Main content area - adjust left margin on desktop to account for sidebar */}
-			<div className='flex flex-1 flex-col overflow-hidden lg:ml-0'>
-				{/* Top header */}
-				<Header />
-
-				{/* Page content - adjust padding for mobile */}
-				<main className='flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6'>
-					<Suspense fallback={<DashboardSkeleton />}>
-						<DashboardContent />
-					</Suspense>
-				</main>
-			</div>
+		<div className='space-y-6'>
+			<Suspense fallback={<DashboardSkeleton />}>
+				<DashboardContent />
+			</Suspense>
 		</div>
 	);
 }

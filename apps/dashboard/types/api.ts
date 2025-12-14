@@ -114,7 +114,7 @@ export interface SessionMetrics {
 export interface Session {
 	session_id: string;
 	user_id: string;
-	user: UserSummary;
+	user?: UserSummary;
 	agent_id: string;
 	environment: string;
 	status: SessionStatus;

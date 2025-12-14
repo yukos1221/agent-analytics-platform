@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import { Bell, User, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function Header() {
@@ -16,17 +16,8 @@ export function Header() {
 
 	return (
 		<header className='flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6'>
-			{/* Search */}
-			<div className='flex flex-1 items-center'>
-				<div className='relative w-96'>
-					<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400' />
-					<input
-						type='search'
-						placeholder='Search sessions, metrics...'
-						className='w-full rounded-md border border-gray-300 bg-gray-50 py-2 pl-10 pr-4 text-sm placeholder-gray-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary-500'
-					/>
-				</div>
-			</div>
+			{/* Left side - empty for now */}
+			<div className='flex-1'></div>
 
 			{/* Actions */}
 			<div className='flex items-center space-x-4'>

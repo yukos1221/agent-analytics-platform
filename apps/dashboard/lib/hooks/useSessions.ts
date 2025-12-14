@@ -5,7 +5,7 @@
  * Per Frontend Architecture Spec §8.2 - Data Fetching Strategy
  */
 
-import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import {
 	getSessions,
 	getSessionDetail,
@@ -13,7 +13,12 @@ import {
 	sessionKeys,
 } from '@/lib/api/sessions';
 import type { PeriodOption } from '@/lib/api/metrics';
-import type { SessionsListResponse, SessionDetailResponse, SessionEventsResponse, SessionStatus } from '@/types/api';
+import type {
+	SessionsListResponse,
+	SessionDetailResponse,
+	SessionEventsResponse,
+	SessionStatus,
+} from '@/types/api';
 
 export interface SessionFilters {
 	period: PeriodOption;
@@ -53,12 +58,28 @@ interface UseSessionsOptions {
  * Uses GET /v1/sessions API endpoint with start_time/end_time parameters
  */
 export function useSessions(options: UseSessionsOptions = {}) {
-	const {
-		period = '7d',
-		statuses = [],
+	const { period = '7d', statuses = [], initialData, enabled = true } = options;
+
+	// Create stable query key from options
+	const queryKey = sessionKeys.list({
+		period,
+		status: statuses,
+	});
+
+	const query = useQuery({
+		queryKey,
+		queryFn: () =>
+			getSessions({
+				period,
+				status: statuses.length > 0 ? statuses : undefined,
+			}),
 		initialData,
-		enabled = true,
-	} = options;
+		enabled,
+		staleTime: 30 * 1000, // Sessions data can be stale for 30s
+		refetchInterval: false, // Don't auto-refetch unless filters change
+	});
+
+	const sessions = query.data?.data || [];
 
 	const filters: SessionFilters = {
 		period,
@@ -66,28 +87,11 @@ export function useSessions(options: UseSessionsOptions = {}) {
 		searchQuery: '', // TODO: Phase 2 - Add search query filtering
 	};
 
-	const query = useQuery({
-		queryKey: sessionKeys.list({
-			period: filters.period,
-			status: filters.statuses,
-			// TODO: Phase 2 - Add search query to query key
-		}),
-		queryFn: () => getSessions({
-			period: filters.period,
-			status: filters.statuses.length > 0 ? filters.statuses : undefined,
-		}),
-		initialData,
-		enabled,
-		staleTime: 30 * 1000, // Sessions data can be stale for 30s
-		refetchInterval: false, // Don't auto-refetch unless filters change
-	});
-
-	// TODO: Phase 2 - Implement client-side search filtering
-	const sessions = query.data?.data || [];
-
 	const updateFilters = (newFilters: Partial<SessionFilters>) => {
-		// TODO: Phase 2 - Implement filter updates with proper query invalidation
-		console.warn('Filter updates not implemented yet - Phase 2 feature');
+		// This is a no-op for now since filters are passed from parent component
+		// In a real implementation, this would update URL params or local state
+		// For now, the parent component manages filter state
+		// TODO: Implement filter updates when needed
 	};
 
 	return {
