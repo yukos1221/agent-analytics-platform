@@ -13,7 +13,9 @@ export default function SessionDetailPage({ params }: PageProps) {
     const { id } = params;
 
     // Basic session ID validation
-    if (!id || !id.startsWith('sess_') || id.length < 20) {
+    // Session IDs must start with 'sess_' and have at least some content after the prefix
+    // (e.g., 'sess_recent_1' from test data or 'sess_abc123xyz' from production)
+    if (!id || !id.startsWith('sess_') || id.length < 7) {
         notFound();
     }
 
