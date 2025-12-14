@@ -22,7 +22,7 @@ export default function SessionDetailPage({ params }: PageProps) {
 
     // Fetch session events for timeline
     const { data: eventsData, isLoading: eventsLoading } = useSessionEvents(id);
-    const events = eventsData?.pages.flatMap((page) => page.data) || [];
+    const events = eventsData?.pages.flatMap((page) => page.events) || [];
 
     const isLoading = sessionLoading || eventsLoading;
 

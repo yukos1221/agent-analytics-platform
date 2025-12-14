@@ -327,11 +327,12 @@ export function jwtAuth() {
         const authHeader = c.req.header('Authorization') || '';
         const match = authHeader.match(/^Bearer\s+(.+)$/i);
 
-        // In development/test, allow requests without token (use default org)
-        if (!match && (process.env.NODE_ENV !== 'production' || process.env.NODE_ENV === 'test')) {
+        // In development only, allow requests without token (use default org)
+        // Tests should still require authentication to verify auth behavior
+        if (!match && process.env.NODE_ENV === 'development') {
             const testAuth: AuthContext = {
                 org_id: 'org_default',
-                environment: process.env.NODE_ENV === 'test' ? 'production' : 'development',
+                environment: 'development',
                 token_type: 'jwt',
             };
             c.set('auth', testAuth);

@@ -147,7 +147,7 @@ export const eventStore = new InMemoryEventStore();
 // Add some sample data for testing
 // This will be removed when real data ingestion is implemented
 async function seedSampleData() {
-	const sampleEvents = [
+	const sampleEvents: Event[] = [
 		// Session 1: Completed, agent_test, production (2 days ago)
 		{
 			event_id: 'evt_sample_001',

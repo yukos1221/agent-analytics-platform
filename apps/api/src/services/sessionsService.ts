@@ -113,7 +113,7 @@ export async function listSessions(
         org_id: string;
         user_id: string;
         agent_id: string;
-        status: string;
+        status: SessionStatus;
         started_at: Date | string;
         ended_at: Date | string | null;
         duration_ms: number | null;
