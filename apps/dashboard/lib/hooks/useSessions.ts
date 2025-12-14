@@ -141,8 +141,17 @@ export async function prefetchSessions(
     queryClient: ReturnType<typeof useQueryClient>,
     period: PeriodOption = '7d'
 ): Promise<void> {
-    await queryClient.prefetchQuery({
-        queryKey: sessionKeys.list({ period }),
-        queryFn: () => getSessions({ period }),
-    });
+    try {
+        await queryClient.prefetchQuery({
+            queryKey: sessionKeys.list({ period }),
+            queryFn: () => getSessions({ period }),
+            // Don't throw on error - let client-side handle it
+            retry: false,
+        });
+    } catch (error) {
+        // Prefetch errors are not critical - client-side will retry
+        // Log but don't throw to prevent page from crashing
+        console.error('Failed to prefetch sessions:', error);
+        // Don't rethrow - let the page render and client will fetch
+    }
 }

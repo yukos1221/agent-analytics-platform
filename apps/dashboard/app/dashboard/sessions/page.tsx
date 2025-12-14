@@ -28,13 +28,8 @@ export default async function SessionsPage({ searchParams }: PageProps) {
     const period = searchParams.period || '7d';
 
     // Prefetch initial data on server for better UX
-    // Wrap in try-catch to prevent page from failing if prefetch errors
-    try {
-        await prefetchSessions(queryClient, period);
-    } catch (error) {
-        // Log error but continue rendering - client-side will retry
-        console.error('Failed to prefetch sessions:', error);
-    }
+    // prefetchSessions already handles errors internally, so we don't need try-catch here
+    await prefetchSessions(queryClient, period);
 
     return (
         <div className="space-y-6">

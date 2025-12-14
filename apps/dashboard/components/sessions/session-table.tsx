@@ -93,6 +93,7 @@ export const SessionTable = memo(function SessionTable({ className }: SessionTab
     const table = useReactTable({
         data: sessions,
         columns,
+        getRowId: (row) => row.session_id, // Use session_id as row identifier
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
