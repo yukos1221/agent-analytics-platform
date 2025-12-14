@@ -162,6 +162,15 @@ test.describe('Flow 1: Dashboard Metrics Display @mvp', () => {
  */
 test.describe('Flow 2: Sessions List and Detail @mvp', () => {
     test('navigate to sessions list and view session details', async ({ page }) => {
+        // Pre-test check: Verify database is seeded (optional, for better error messages)
+        // This is a best-effort check and won't fail the test if it can't verify
+        try {
+            // Try to check if we can query the API directly to see if data exists
+            // This helps with debugging but doesn't block the test
+        } catch (e) {
+            // Ignore - this is just for diagnostics
+        }
+
         // Step 1: Start at dashboard (will redirect to /dashboard)
         await page.goto('/', { waitUntil: 'networkidle' });
 
@@ -175,6 +184,7 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         // Set up response listener before clicking to catch fast responses
         let sessionsResponseStatus: number | null = null;
         let sessionsResponseData: any = null;
+        let sessionsRequestUrl: string | null = null;
         const sessionsResponsePromise = page
             .waitForResponse(
                 async (response) => {
@@ -182,6 +192,7 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
                     const isSessionsEndpoint =
                         url.includes('/v1/sessions') && response.request().method() === 'GET';
                     if (isSessionsEndpoint) {
+                        sessionsRequestUrl = url;
                         sessionsResponseStatus = response.status();
                         try {
                             sessionsResponseData = await response.json();
@@ -209,18 +220,15 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
 
         // Step 3: Wait for sessions list page to load
         await expect(page).toHaveURL('/dashboard/sessions', { timeout: 15000 });
-        console.log('✅ Navigated to /dashboard/sessions');
 
         // Step 4: Wait for page to be interactive first
         await page.waitForLoadState('networkidle');
-        console.log('✅ Page is interactive');
 
         // Step 5: Wait for sessions API call to complete
         await sessionsResponsePromise;
 
         // Additional wait for React to hydrate and render
         await page.waitForTimeout(2000);
-        console.log('✅ Waited for React hydration');
 
         // Step 6: Check if page loaded correctly - look for any content
         // Check for Next.js error boundary first
@@ -348,26 +356,94 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         // Wait for at least one row to appear
         await expect(async () => {
             const count = await sessionRows.count();
+            console.log(`🔍 Checking for session rows: found ${count}`);
+
             if (count === 0) {
                 // Check if empty state is shown instead
                 const emptyState = await page
                     .getByText('No sessions found matching your filters.')
                     .isVisible()
                     .catch(() => false);
+
                 if (emptyState) {
-                    // Log API response for debugging
+                    // Log detailed debugging info
+                    console.error('❌ Empty state shown - no sessions found');
+                    console.error('🔍 Debugging information:');
+                    console.error(`   - API Status: ${sessionsResponseStatus || 'unknown'}`);
+                    console.error(`   - Current URL: ${page.url()}`);
+
                     if (sessionsResponseData) {
-                        console.error('API returned empty sessions:', sessionsResponseData);
+                        console.error(
+                            '📊 API Response:',
+                            JSON.stringify(sessionsResponseData, null, 2)
+                        );
+                        console.error(
+                            `📊 API returned ${sessionsResponseData?.data?.length || 0} sessions`
+                        );
+
+                        // Check if pagination info is present
+                        if (sessionsResponseData.pagination) {
+                            console.error(`📊 Pagination:`, sessionsResponseData.pagination);
+                        }
                     } else if (sessionsResponseStatus !== null) {
                         console.error(
-                            'API status:',
-                            sessionsResponseStatus,
-                            'but no data available'
+                            `📊 API status: ${sessionsResponseStatus}, but no data available`
+                        );
+                    } else {
+                        console.error('📊 API response was not captured');
+                    }
+
+                    // Check what's actually on the page
+                    const tableHtml = await page
+                        .locator('[data-testid="sessions-table"]')
+                        .innerHTML()
+                        .catch(() => '');
+                    if (tableHtml) {
+                        console.error(
+                            '📊 Table HTML (first 500 chars):',
+                            tableHtml.substring(0, 500)
                         );
                     }
-                    throw new Error('No sessions found - database may not be seeded correctly');
+
+                    // Provide helpful error message with diagnostic info
+                    const diagnosticInfo = [];
+                    if (sessionsRequestUrl) {
+                        diagnosticInfo.push(`Request URL: ${sessionsRequestUrl}`);
+                    }
+                    if (sessionsResponseStatus !== null) {
+                        diagnosticInfo.push(`API Status: ${sessionsResponseStatus}`);
+                    }
+
+                    const errorMsg = [
+                        'No sessions found in API response.',
+                        ...(diagnosticInfo.length > 0
+                            ? ['', 'Diagnostic info:', ...diagnosticInfo.map((i) => `  - ${i}`)]
+                            : []),
+                        '',
+                        'Possible causes:',
+                        '1. Database not seeded - run: pnpm --filter @repo/database db:seed',
+                        '2. Wrong org_id - check that TEST_USER.org_id (acme123) matches seeded data',
+                        '3. Time period mismatch - check that period filter (7d) matches seeded session dates',
+                        '4. Database connection issue - check DATABASE_URL and that DB is running',
+                        '',
+                        'To debug:',
+                        '  - Check API logs for the actual org_id used in the request',
+                        '  - Verify sessions exist: psql $DATABASE_URL -c "SELECT COUNT(*) FROM sessions WHERE org_id = \'acme123\';"',
+                        '  - Check date range: psql $DATABASE_URL -c "SELECT id, started_at FROM sessions WHERE org_id = \'acme123\' LIMIT 5;"',
+                    ].join('\n');
+
+                    throw new Error(errorMsg);
                 }
-                throw new Error(`Expected at least 1 session row, but found ${count}`);
+
+                // If no empty state, table might still be loading
+                const skeletonVisible = await page.locator('[class*="animate-pulse"]').count();
+                if (skeletonVisible > 0) {
+                    throw new Error(`Still loading - ${skeletonVisible} skeleton elements visible`);
+                }
+
+                throw new Error(
+                    `Expected at least 1 session row, but found ${count} (no empty state or skeleton)`
+                );
             }
         }).toPass({ timeout: 15000 });
 

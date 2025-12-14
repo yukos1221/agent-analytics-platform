@@ -166,10 +166,10 @@ export async function listSessions(
 
             // Filter sessions by started_at time range
             const sessionStartTime = startedAt.getTime();
-            if (
-                sessionStartTime >= filterStart.getTime() &&
-                sessionStartTime <= filterEnd.getTime()
-            ) {
+            const filterStartTime = filterStart.getTime();
+            const filterEndTime = filterEnd.getTime();
+
+            if (sessionStartTime >= filterStartTime && sessionStartTime <= filterEndTime) {
                 sessionsRows.push({
                     id: sessionId,
                     org_id: orgId,

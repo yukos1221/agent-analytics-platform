@@ -1,10 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import {
-	SessionListQuerySchema,
-	generateRequestId,
-	ErrorResponse,
-} from '../schemas';
+import { SessionListQuerySchema, generateRequestId, ErrorResponse } from '../schemas';
 import { jwtAuth, getAuthContext, rateLimit } from '../middleware';
 import { listSessions, getSessionDetail } from '../services/sessionsService';
 
@@ -42,60 +38,60 @@ sessions.use('*', jwtAuth());
 sessions.use('*', rateLimit({ scope: 'org', limit: 100, windowSeconds: 60 }));
 
 sessions.get(
-	'/',
-	zValidator('query', SessionListQuerySchema, (result, c) => {
-		if (!result.success) {
-			return c.json<ErrorResponse>(
-				{
-					error: {
-						code: 'VAL_INVALID_FORMAT',
-						message: 'Invalid query parameters',
-						details: {
-							errors: result.error.errors,
-						},
-					},
-					request_id: generateRequestId(),
-				},
-				400
-			);
-		}
-	}),
-	async (c) => {
-		const requestId = generateRequestId();
-		const auth = getAuthContext(c);
-		const orgId = auth?.org_id || 'org_default';
+    '/',
+    zValidator('query', SessionListQuerySchema, (result, c) => {
+        if (!result.success) {
+            return c.json<ErrorResponse>(
+                {
+                    error: {
+                        code: 'VAL_INVALID_FORMAT',
+                        message: 'Invalid query parameters',
+                        details: {
+                            errors: result.error.errors,
+                        },
+                    },
+                    request_id: generateRequestId(),
+                },
+                400
+            );
+        }
+    }),
+    async (c) => {
+        const requestId = generateRequestId();
+        const auth = getAuthContext(c);
+        const orgId = auth?.org_id || 'org_default';
 
-		try {
-			const query = c.req.valid('query');
+        try {
+            const query = c.req.valid('query');
 
-			const result = await listSessions(orgId, query);
+            const result = await listSessions(orgId, query);
 
-			return c.json(
-				{
-					...result,
-					meta: {
-						request_id: requestId,
-					},
-				},
-				200
-			);
-		} catch (error) {
-			const err = error as Error;
-			return c.json<ErrorResponse>(
-				{
-					error: {
-						code: 'INT_SERVER_ERROR',
-						message: 'Failed to retrieve sessions',
-						details: {
-							error: err.message,
-						},
-					},
-					request_id: requestId,
-				},
-				500
-			);
-		}
-	}
+            return c.json(
+                {
+                    ...result,
+                    meta: {
+                        request_id: requestId,
+                    },
+                },
+                200
+            );
+        } catch (error) {
+            const err = error as Error;
+            return c.json<ErrorResponse>(
+                {
+                    error: {
+                        code: 'INT_SERVER_ERROR',
+                        message: 'Failed to retrieve sessions',
+                        details: {
+                            error: err.message,
+                        },
+                    },
+                    request_id: requestId,
+                },
+                500
+            );
+        }
+    }
 );
 
 /**
@@ -118,65 +114,63 @@ sessions.get(
  * - 500 Internal Error: Server error
  */
 sessions.get('/:session_id', async (c) => {
-	const requestId = generateRequestId();
-	const auth = getAuthContext(c);
-	const orgId = auth?.org_id || 'org_default';
-	const sessionId = c.req.param('session_id');
+    const requestId = generateRequestId();
+    const auth = getAuthContext(c);
+    const orgId = auth?.org_id || 'org_default';
+    const sessionId = c.req.param('session_id');
 
-	// Validate session ID format
-	if (!sessionId.match(/^sess_[a-zA-Z0-9]{20,30}$/)) {
-		return c.json<ErrorResponse>(
-			{
-				error: {
-					code: 'VAL_INVALID_FORMAT',
-					message: 'Invalid session ID format',
-					details: {
-						field: 'session_id',
-						received: sessionId,
-						expected: 'sess_XXXXXXXXXXXXXXXXXXXX',
-					},
-				},
-				request_id: requestId,
-			},
-			400
-		);
-	}
+    // Validate session ID format
+    if (!sessionId.match(/^sess_[a-zA-Z0-9]{20,30}$/)) {
+        return c.json<ErrorResponse>(
+            {
+                error: {
+                    code: 'VAL_INVALID_FORMAT',
+                    message: 'Invalid session ID format',
+                    details: {
+                        field: 'session_id',
+                        received: sessionId,
+                        expected: 'sess_XXXXXXXXXXXXXXXXXXXX',
+                    },
+                },
+                request_id: requestId,
+            },
+            400
+        );
+    }
 
-	try {
-		const session = await getSessionDetail(orgId, sessionId);
+    try {
+        const session = await getSessionDetail(orgId, sessionId);
 
-		if (!session) {
-			return c.json<ErrorResponse>(
-				{
-					error: {
-						code: 'RES_NOT_FOUND',
-						message: 'Session not found',
-					},
-					request_id: requestId,
-				},
-				404
-			);
-		}
+        if (!session) {
+            return c.json<ErrorResponse>(
+                {
+                    error: {
+                        code: 'RES_NOT_FOUND',
+                        message: 'Session not found',
+                    },
+                    request_id: requestId,
+                },
+                404
+            );
+        }
 
-		return c.json(session, 200);
-	} catch (error) {
-		const err = error as Error;
-		return c.json<ErrorResponse>(
-			{
-				error: {
-					code: 'INT_SERVER_ERROR',
-					message: 'Failed to retrieve session details',
-					details: {
-						error: err.message,
-					},
-				},
-				request_id: requestId,
-			},
-			500
-		);
-	}
+        return c.json(session, 200);
+    } catch (error) {
+        const err = error as Error;
+        return c.json<ErrorResponse>(
+            {
+                error: {
+                    code: 'INT_SERVER_ERROR',
+                    message: 'Failed to retrieve session details',
+                    details: {
+                        error: err.message,
+                    },
+                },
+                request_id: requestId,
+            },
+            500
+        );
+    }
 });
 
 export default sessions;
-
-

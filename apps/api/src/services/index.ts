@@ -320,7 +320,16 @@ async function seedSampleData() {
         },
     ];
 
+    // Ingest events for org_test123 (for unit tests)
     await eventStore.ingest('org_test123', sampleEvents);
+
+    // Also ingest events for acme123 (for E2E tests)
+    // Create similar events but with acme123 org_id
+    const acmeEvents: Event[] = sampleEvents.map((evt) => ({
+        ...evt,
+        // Keep the same event structure but they'll be associated with acme123 org
+    }));
+    await eventStore.ingest('acme123', acmeEvents);
 }
 
 // Seed sample data on startup
