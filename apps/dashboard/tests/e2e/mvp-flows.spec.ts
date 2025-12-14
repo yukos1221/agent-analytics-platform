@@ -173,11 +173,31 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         await expect(sessionsLink).toBeVisible({ timeout: 10000 });
 
         // Set up response listener before clicking to catch fast responses
+        let sessionsResponseStatus: number | null = null;
+        let sessionsResponseData: any = null;
         const sessionsResponsePromise = page
             .waitForResponse(
-                (response) =>
-                    response.url().includes('/v1/sessions') &&
-                    response.request().method() === 'GET',
+                async (response) => {
+                    const url = response.url();
+                    const isSessionsEndpoint =
+                        url.includes('/v1/sessions') && response.request().method() === 'GET';
+                    if (isSessionsEndpoint) {
+                        sessionsResponseStatus = response.status();
+                        try {
+                            sessionsResponseData = await response.json();
+                            console.log(
+                                `Sessions API response: status=${sessionsResponseStatus}, dataLength=${
+                                    sessionsResponseData?.data?.length || 0
+                                }`
+                            );
+                        } catch (e) {
+                            console.log(
+                                `Sessions API response: status=${sessionsResponseStatus}, failed to parse body: ${e}`
+                            );
+                        }
+                    }
+                    return isSessionsEndpoint;
+                },
                 { timeout: 30000 }
             )
             .catch(() => {
@@ -187,34 +207,116 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
 
         await sessionsLink.click();
 
-        // Step 3: Wait for sessions list to load
+        // Step 3: Wait for sessions list page to load
         await expect(page).toHaveURL('/dashboard/sessions', { timeout: 10000 });
 
-        // Step 4: Wait for sessions API call to complete
-        // Note: Response may have already completed from SSR prefetch, so we catch timeout
+        // Step 4: Wait for page header to appear (confirms page loaded)
+        await expect(page.getByRole('heading', { name: /Agent Sessions/i })).toBeVisible({
+            timeout: 10000,
+        });
+
+        // Step 5: Wait for sessions API call to complete
         await sessionsResponsePromise;
 
         // Wait for page to be interactive
         await page.waitForLoadState('networkidle');
 
-        // Step 5: Check for error state first
+        // Additional wait for React to hydrate and render
+        await page.waitForTimeout(2000);
+
+        // Step 6: Check for error state first
         const hasError = await page
             .getByText('Error loading sessions')
             .isVisible()
             .catch(() => false);
         if (hasError) {
-            console.warn('Sessions failed to load - skipping test');
-            // In CI, this should not happen if database is seeded correctly
-            // But we'll skip gracefully for now
+            // Get error message for debugging
+            const errorMessage = await page
+                .locator('.text-red-700')
+                .textContent()
+                .catch(() => 'Unknown error');
+            console.error('Sessions failed to load:', errorMessage);
+            if (sessionsResponseStatus !== null) {
+                console.error('API Response status:', sessionsResponseStatus);
+                console.error('API Response data:', sessionsResponseData);
+            }
             test.skip();
             return;
         }
 
-        // Step 6: Verify sessions table is visible
-        const sessionsTable = page.locator('[data-testid="sessions-table"]');
-        await expect(sessionsTable).toBeVisible({ timeout: 15000 });
+        // Step 7: Wait for sessions table to appear
+        // The table should appear after loading completes
+        // We wait for either the table itself or check if we're still in loading state
+        await expect(async () => {
+            // Check if table is visible
+            const table = page.locator('[data-testid="sessions-table"]');
+            const tableVisible = await table.isVisible().catch(() => false);
 
-        // Step 7: Wait for at least one session row to be present (from seeded data)
+            if (tableVisible) {
+                return; // Table is visible, we're done
+            }
+
+            // Check if we're still loading (skeleton visible - look for gray background elements)
+            const skeletonElements = await page.locator('div[class*="animate-pulse"]').count();
+
+            if (skeletonElements > 0) {
+                // Still loading, wait a bit more
+                await page.waitForTimeout(500);
+                throw new Error(`Still loading - ${skeletonElements} skeleton elements visible`);
+            }
+
+            // Check for empty state
+            const emptyState = await page
+                .getByText('No sessions found matching your filters.')
+                .isVisible()
+                .catch(() => false);
+
+            if (emptyState) {
+                // Log API response for debugging
+                if (sessionsResponseData) {
+                    console.error(
+                        'Empty state - API response:',
+                        JSON.stringify(sessionsResponseData, null, 2)
+                    );
+                } else if (sessionsResponseStatus !== null) {
+                    console.error(
+                        'Empty state - API status:',
+                        sessionsResponseStatus,
+                        'but no data'
+                    );
+                }
+                throw new Error('Empty state shown - no sessions found');
+            }
+
+            // Check if error state is shown (we already checked above, but double-check)
+            const errorVisible = await page
+                .getByText('Error loading sessions')
+                .isVisible()
+                .catch(() => false);
+
+            if (errorVisible) {
+                const errorText = await page
+                    .locator('.text-red-700')
+                    .textContent()
+                    .catch(() => '');
+                throw new Error(`Error state visible: ${errorText}`);
+            }
+
+            // If nothing is visible, something is wrong - take screenshot for debugging
+            const bodyText = await page.textContent('body').catch(() => null);
+            if (bodyText) {
+                console.error('Page body content (first 1000 chars):', bodyText.substring(0, 1000));
+            }
+            throw new Error(
+                'Table not visible, not loading, no empty state, no error - page may not have rendered correctly'
+            );
+        }).toPass({ timeout: 20000 });
+
+        // Step 8: Verify sessions table is visible
+        const sessionsTable = page.locator('[data-testid="sessions-table"]');
+        await expect(sessionsTable).toBeVisible({ timeout: 5000 });
+
+        // Step 9: Wait for at least one session row to be present (from seeded data)
         // Use count() to ensure we have actual rows, not just the table structure
         const sessionRows = page.locator('[data-testid*="session-row-"]');
 
@@ -228,6 +330,16 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
                     .isVisible()
                     .catch(() => false);
                 if (emptyState) {
+                    // Log API response for debugging
+                    if (sessionsResponseData) {
+                        console.error('API returned empty sessions:', sessionsResponseData);
+                    } else if (sessionsResponseStatus !== null) {
+                        console.error(
+                            'API status:',
+                            sessionsResponseStatus,
+                            'but no data available'
+                        );
+                    }
                     throw new Error('No sessions found - database may not be seeded correctly');
                 }
                 throw new Error(`Expected at least 1 session row, but found ${count}`);
@@ -237,14 +349,14 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         // Now verify the first row is visible
         await expect(sessionRows.first()).toBeVisible();
 
-        // Step 8: Click on the first session row
+        // Step 10: Click on the first session row
         const firstSession = sessionRows.first();
         await firstSession.click();
 
-        // Step 9: Verify navigation to session detail page
+        // Step 11: Verify navigation to session detail page
         await expect(page).toHaveURL(/\/dashboard\/sessions\/sess_/);
 
-        // Step 10: Verify SessionDetailHeader is visible with correct metadata
+        // Step 12: Verify SessionDetailHeader is visible with correct metadata
         // Use data-testid to avoid ambiguity with page h1 heading
         const sessionHeader = page.locator('[data-testid="session-detail-header"]');
         await expect(sessionHeader).toBeVisible();
@@ -254,7 +366,7 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         const statusBadge = page.locator('[data-testid="session-status"]').first();
         await expect(statusBadge).toBeVisible();
 
-        // Step 11: Verify EventTimeline is rendered
+        // Step 13: Verify EventTimeline is rendered
         // Wait for events API call to complete (if it happens)
         await page
             .waitForResponse(
