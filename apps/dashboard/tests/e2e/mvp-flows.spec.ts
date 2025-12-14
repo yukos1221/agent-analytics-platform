@@ -452,15 +452,92 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
 
         // Step 11: Click on the first session row
         const firstSession = sessionRows.first();
+
+        // Get the session ID from the row's data-testid before clicking
+        const rowTestId = await firstSession.getAttribute('data-testid');
+        const clickedSessionId = rowTestId?.replace('session-row-', '') || 'unknown';
+        console.log(`📍 Clicking on session: ${clickedSessionId}`);
+
+        // Set up listener for session detail API call
+        let sessionDetailStatus: number | null = null;
+        let sessionDetailData: any = null;
+        const sessionDetailPromise = page
+            .waitForResponse(
+                async (response) => {
+                    const url = response.url();
+                    // Match GET /v1/sessions/{id} but NOT /v1/sessions/{id}/events
+                    const isDetailEndpoint =
+                        url.includes('/v1/sessions/') &&
+                        !url.includes('/events') &&
+                        response.request().method() === 'GET';
+                    if (isDetailEndpoint) {
+                        sessionDetailStatus = response.status();
+                        try {
+                            sessionDetailData = await response.json();
+                            console.log(
+                                `📊 Session detail API: status=${sessionDetailStatus}, hasData=${!!sessionDetailData}`
+                            );
+                        } catch (e) {
+                            console.log(`📊 Session detail API: status=${sessionDetailStatus}, parse error`);
+                        }
+                    }
+                    return isDetailEndpoint;
+                },
+                { timeout: 15000 }
+            )
+            .catch(() => {
+                console.log('⚠️ Session detail API call not captured (may be cached)');
+            });
+
         await firstSession.click();
 
         // Step 12: Verify navigation to session detail page
         await expect(page).toHaveURL(/\/dashboard\/sessions\/sess_/);
+        console.log(`📍 Navigated to: ${page.url()}`);
 
-        // Step 13: Verify SessionDetailHeader is visible with correct metadata
-        // Use data-testid to avoid ambiguity with page h1 heading
+        // Wait for the session detail API call
+        await sessionDetailPromise;
+
+        // Wait for page to stabilize
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(2000);
+
+        // Step 13: Check page state before looking for header
+        // Check for 404 page
+        const is404 = await page.getByText('404').isVisible().catch(() => false);
+        const isNotFound = await page.getByText('not found', { exact: false }).isVisible().catch(() => false);
+        if (is404 || isNotFound) {
+            console.error('❌ Page shows 404/Not Found');
+            console.error(`   Session ID: ${clickedSessionId}`);
+            console.error(`   API Status: ${sessionDetailStatus}`);
+            console.error(`   API Data: ${JSON.stringify(sessionDetailData, null, 2)}`);
+            throw new Error(
+                `Session detail page shows 404. Session ID: ${clickedSessionId}, API status: ${sessionDetailStatus}`
+            );
+        }
+
+        // Check for loading state (skeleton)
+        const isLoading = await page.locator('.animate-pulse').isVisible().catch(() => false);
+        if (isLoading) {
+            console.log('⏳ Page still showing loading skeleton, waiting more...');
+            await page.waitForTimeout(3000);
+        }
+
+        // Check for error boundary
+        const hasErrorBoundary = await page
+            .getByText('Something went wrong')
+            .isVisible()
+            .catch(() => false);
+        if (hasErrorBoundary) {
+            const bodyText = await page.textContent('body').catch(() => '');
+            console.error('❌ Page error boundary triggered');
+            console.error(`   Body text (first 500 chars): ${bodyText?.substring(0, 500)}`);
+            throw new Error('Session detail page error boundary triggered');
+        }
+
+        // Now look for the header
         const sessionHeader = page.locator('[data-testid="session-detail-header"]');
-        await expect(sessionHeader).toBeVisible();
+        await expect(sessionHeader).toBeVisible({ timeout: 15000 });
         await expect(sessionHeader.getByRole('heading', { name: 'Session Details' })).toBeVisible();
 
         // Verify session status badge is visible (from SessionDetailHeader)

@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "auth-token",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2FkbWluMTIzIiwiZW1haWwiOiJhZG1pbkB0ZXN0LmNvbSIsIm9yZ19pZCI6ImFjbWUxMjMiLCJjdXN0b20iOnsib3JnX3JvbGUiOiJhZG1pbiJ9LCJpYXQiOjE3NjU3MzU3NjksImV4cCI6MTc2NTgyMjE2OX0.JNb2fWLdNDCe3QIxzbGhhbiDELU3u94F_z4AbwdU37w",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2FkbWluMTIzIiwiZW1haWwiOiJhZG1pbkB0ZXN0LmNvbSIsIm9yZ19pZCI6ImFjbWUxMjMiLCJjdXN0b20iOnsib3JnX3JvbGUiOiJhZG1pbiJ9LCJpYXQiOjE3NjU3MzY5NTAsImV4cCI6MTc2NTgyMzM1MH0.rX6rSJwuf-Rx0fCWWMUzuc2IeXhz7PtXhPYcuAbLteM",
       "domain": "localhost",
       "path": "/",
-      "expires": 1765822169.421197,
+      "expires": 1765823350.240796,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Strict"
