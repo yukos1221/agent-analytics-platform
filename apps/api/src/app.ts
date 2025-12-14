@@ -8,7 +8,9 @@
  */
 
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { events, metrics, sessions, apiKeys } from './routes';
+import auth from './routes/auth';
 import docs from './routes/docs';
 
 // Types matching OpenAPI HealthResponse schema
@@ -26,6 +28,19 @@ interface HealthResponse {
 }
 
 const app = new Hono();
+
+// ====================
+// CORS Middleware
+// ====================
+app.use(
+	'*',
+	cors({
+		origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow dashboard and API server origins
+		allowHeaders: ['*'],
+		allowMethods: ['*'],
+		credentials: true,
+	})
+);
 
 // ====================
 // Health Check (no /v1 prefix)
@@ -58,6 +73,9 @@ v1.route('/api-keys', apiKeys);
 // Mount v1 under /v1 prefix
 app.route('/v1', v1);
 
+// Mount auth routes (not under /v1)
+app.route('/auth', auth);
+
 // ====================
 // API Documentation
 // ====================
@@ -73,6 +91,7 @@ app.get('/', (c) => {
 		endpoints: {
 			health: '/health',
 			docs: '/docs',
+			auth: '/auth/login',
 			events: '/v1/events',
 			metrics: '/v1/metrics/overview',
 			timeseries: '/v1/metrics/timeseries',

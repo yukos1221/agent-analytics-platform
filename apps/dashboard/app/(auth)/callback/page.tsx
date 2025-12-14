@@ -23,7 +23,7 @@ export default function CallbackPage() {
 		}
 
 		// On successful callback, redirect to dashboard
-		router.push('/dashboard');
+		router.push('/');
 	}, [router, searchParams]);
 
 	return (

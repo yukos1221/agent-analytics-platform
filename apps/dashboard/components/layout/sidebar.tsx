@@ -16,12 +16,32 @@ import {
 import { cn } from '@/lib/utils/cn';
 
 const navigation = [
-	{ name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+	{ name: 'Overview', href: '/', icon: LayoutDashboard },
 	{ name: 'Sessions', href: '/dashboard/sessions', icon: Activity },
-	{ name: 'Metrics', href: '/dashboard/metrics', icon: BarChart3 },
-	{ name: 'Alerts', href: '/dashboard/alerts', icon: AlertCircle },
-	{ name: 'Team', href: '/dashboard/settings/team', icon: Users },
-	{ name: 'Settings', href: '/dashboard/settings', icon: Settings },
+	{
+		name: 'Metrics',
+		href: '/dashboard/metrics',
+		icon: BarChart3,
+		disabled: true,
+	},
+	{
+		name: 'Alerts',
+		href: '/dashboard/alerts',
+		icon: AlertCircle,
+		disabled: true,
+	},
+	{
+		name: 'Team',
+		href: '/dashboard/settings/team',
+		icon: Users,
+		disabled: true,
+	},
+	{
+		name: 'Settings',
+		href: '/dashboard/settings',
+		icon: Settings,
+		disabled: true,
+	},
 ];
 
 export function Sidebar() {
@@ -56,14 +76,17 @@ export function Sidebar() {
 			{/* TODO: Phase 2 - Add swipe gestures for mobile menu */}
 
 			{/* Sidebar */}
-			<aside className={cn(
-				'flex flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out',
-				// Desktop: always visible, fixed width
-				'hidden lg:flex lg:w-64 lg:relative lg:translate-x-0',
-				// Mobile: overlay, full width, slide in/out
-				'lg:hidden fixed inset-y-0 left-0 w-64 z-50 transform',
-				isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-			)}>
+			<aside
+				className={cn(
+					// Base styles
+					'flex flex-col border-r border-gray-200 bg-white',
+					// Positioning: always fixed overlay on mobile, relative on desktop
+					'fixed inset-y-0 left-0 w-64 z-50 lg:relative lg:translate-x-0',
+					// Transform: hidden on mobile by default, show when menu open
+					'transform -translate-x-full transition-transform duration-200 ease-in-out',
+					isMobileMenuOpen && 'translate-x-0'
+				)}
+			>
 				{/* Logo */}
 				<div className='flex h-16 items-center border-b border-gray-200 px-6'>
 					<Link
@@ -74,7 +97,9 @@ export function Sidebar() {
 						<div className='flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600'>
 							<BarChart3 className='h-5 w-5 text-white' />
 						</div>
-						<span className='text-lg font-semibold text-gray-900'>Analytics</span>
+						<span className='text-lg font-semibold text-gray-900'>
+							Analytics
+						</span>
 					</Link>
 				</div>
 
@@ -83,7 +108,21 @@ export function Sidebar() {
 					{navigation.map((item) => {
 						const isActive =
 							pathname === item.href ||
-							(item.href !== '/dashboard' && pathname.startsWith(item.href));
+							(item.href !== '/' &&
+								item.href !== '/dashboard' &&
+								pathname.startsWith(item.href));
+
+						if (item.disabled) {
+							return (
+								<div
+									key={item.name}
+									className='group flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-400 cursor-not-allowed opacity-50'
+								>
+									<item.icon className='mr-3 h-5 w-5 flex-shrink-0 text-gray-300' />
+									{item.name}
+								</div>
+							);
+						}
 
 						return (
 							<Link
@@ -116,7 +155,9 @@ export function Sidebar() {
 					<div className='rounded-md bg-gray-50 p-3'>
 						<p className='text-xs font-medium text-gray-500'>Current Plan</p>
 						<p className='text-sm font-semibold text-gray-900'>Pro Team</p>
-						<p className='mt-1 text-xs text-gray-500'>1,247 / 10,000 sessions</p>
+						<p className='mt-1 text-xs text-gray-500'>
+							1,247 / 10,000 sessions
+						</p>
 					</div>
 				</div>
 			</aside>

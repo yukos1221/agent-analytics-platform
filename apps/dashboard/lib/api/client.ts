@@ -47,6 +47,18 @@ export async function apiClient<T>(
 		...(fetchOptions.headers as Record<string, string>),
 	};
 
+	// Add auth token if available (client-side)
+	if (typeof window !== 'undefined') {
+		const token = document.cookie
+			.split('; ')
+			.find((row) => row.startsWith('auth-token='))
+			?.split('=')[1];
+
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+	}
+
 	// Make request
 	const response = await fetch(url.toString(), {
 		...fetchOptions,

@@ -1,13 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api/client';
 
 export default function LoginPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const emailRef = useRef<HTMLInputElement>(null);
+	const passwordRef = useRef<HTMLInputElement>(null);
+
+	const fillTestCredentials = () => {
+		if (emailRef.current) {
+			emailRef.current.value = 'admin@test.com';
+		}
+		if (passwordRef.current) {
+			passwordRef.current.value = 'admin123';
+		}
+	};
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -16,21 +30,34 @@ export default function LoginPage() {
 
 		const formData = new FormData(event.currentTarget);
 		const email = formData.get('email') as string;
-		const _password = formData.get('password') as string;
+		const password = formData.get('password') as string;
 
 		try {
-			// TODO: Implement actual authentication with NextAuth
-			// For MVP, simulate login
-			// eslint-disable-next-line no-console
-			console.log('Login attempt:', { email });
+			// Call login API
+			const response = await api.post<{
+				token: string;
+				user: {
+					email: string;
+					org_id: string;
+					user_id: string;
+					roles: string[];
+				};
+			}>('/auth/login', {
+				email,
+				password,
+			});
 
-			// Simulate API call delay
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			// Store token in cookie
+			document.cookie = `auth-token=${response.token}; path=/; max-age=${
+				24 * 60 * 60
+			}; samesite=strict`;
 
-			// Redirect to dashboard on success
-			router.push('/dashboard');
-		} catch (err) {
-			setError('Invalid email or password. Please try again.');
+			// Redirect to return URL or dashboard
+			const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+			router.push(returnUrl);
+		} catch (err: any) {
+			console.error('Login error:', err);
+			setError(err.message || 'Invalid email or password. Please try again.');
 		} finally {
 			setIsLoading(false);
 		}
@@ -61,6 +88,34 @@ export default function LoginPage() {
 				</p>
 			</div>
 
+			{/* Test credentials info */}
+			<div className='mb-6 rounded-md bg-blue-50 p-4'>
+				<div className='flex items-start justify-between'>
+					<div className='flex-1'>
+						<h3 className='text-sm font-medium text-blue-800'>
+							Test Account Credentials
+						</h3>
+						<div className='mt-2 text-sm text-blue-700'>
+							<p>
+								<strong>Email:</strong> admin@test.com
+							</p>
+							<p>
+								<strong>Password:</strong> admin123
+							</p>
+						</div>
+					</div>
+					<div className='ml-4'>
+						<button
+							type='button'
+							onClick={fillTestCredentials}
+							className='rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+						>
+							Use Test Account
+						</button>
+					</div>
+				</div>
+			</div>
+
 			{/* Error message */}
 			{error && (
 				<div className='mb-4 rounded-md bg-error-50 p-4'>
@@ -78,6 +133,7 @@ export default function LoginPage() {
 						Email address
 					</label>
 					<input
+						ref={emailRef}
 						id='email'
 						name='email'
 						type='email'
@@ -96,6 +152,7 @@ export default function LoginPage() {
 						Password
 					</label>
 					<input
+						ref={passwordRef}
 						id='password'
 						name='password'
 						type='password'
@@ -130,10 +187,11 @@ export default function LoginPage() {
 					</Link>
 				</div>
 
+				{/* Sign In Button */}
 				<button
 					type='submit'
 					disabled={isLoading}
-					className='flex w-full justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+					className='flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 				>
 					{isLoading ? (
 						<svg

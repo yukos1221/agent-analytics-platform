@@ -108,19 +108,22 @@ async function resolveApiKeyRecord(
 	const prefix = apiKey.substring(0, 32);
 
 	// 1) Check in-memory map first (fastest, used for tests and newly created keys)
-		for (const k of Object.keys(INMEMORY_API_KEYS)) {
-			const rec = INMEMORY_API_KEYS[k];
-			if (apiKey.startsWith(rec.api_key_prefix)) return rec;
-		}
+	for (const k of Object.keys(INMEMORY_API_KEYS)) {
+		const rec = INMEMORY_API_KEYS[k];
+		if (apiKey.startsWith(rec.api_key_prefix)) return rec;
+	}
 
 	// 2) Try to get from API key service store (for keys created via API)
 	try {
 		const apiKeyService = await import('../services/apiKeysService');
-		if (apiKeyService && typeof apiKeyService.getApiKeyByPrefix === 'function') {
+		if (
+			apiKeyService &&
+			typeof apiKeyService.getApiKeyByPrefix === 'function'
+		) {
 			const rec = await apiKeyService.getApiKeyByPrefix(prefix);
 			if (rec) {
 				// Convert service record to middleware record format
-			return {
+				return {
 					api_key: rec.api_key,
 					api_key_prefix: rec.api_key_prefix,
 					org_id: rec.org_id,
@@ -128,7 +131,7 @@ async function resolveApiKeyRecord(
 					integration_id: undefined,
 					status: rec.status,
 				};
-		}
+			}
 		}
 	} catch {
 		// Ignore - fallback to other methods
@@ -370,11 +373,18 @@ export function jwtAuth() {
 				// Decode JWT payload without verification (for testing)
 				const parts = token.split('.');
 				if (parts.length === 3) {
-					const payloadJson = Buffer.from(base64urlToBase64(parts[1]), 'base64').toString();
+					const payloadJson = Buffer.from(
+						base64urlToBase64(parts[1]),
+						'base64'
+					).toString();
 					const payload = safeJsonParse<Record<string, unknown>>(payloadJson);
 					if (payload) {
-						const orgId = (payload['custom:org_id'] || payload['org_id'] || payload['org']) as string | undefined;
-						const userId = (payload['sub'] || payload['user_id'] || payload['uid']) as string | undefined;
+						const orgId = (payload['custom:org_id'] ||
+							payload['org_id'] ||
+							payload['org']) as string | undefined;
+						const userId = (payload['sub'] ||
+							payload['user_id'] ||
+							payload['uid']) as string | undefined;
 
 						if (orgId) {
 							const testAuth: AuthContext = {

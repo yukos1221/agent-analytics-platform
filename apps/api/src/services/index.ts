@@ -144,6 +144,96 @@ class InMemoryEventStore {
 // TODO: Replace with database repository when implementing Postgres storage
 export const eventStore = new InMemoryEventStore();
 
+// Add some sample data for testing
+// This will be removed when real data ingestion is implemented
+async function seedSampleData() {
+	const sampleEvents = [
+		{
+			event_id: 'evt_sample_001',
+			event_type: 'session_start',
+			timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+			session_id: 'sess_sample_001',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_002',
+			event_type: 'task_complete',
+			timestamp: new Date(
+				Date.now() - 2 * 24 * 60 * 60 * 1000 + 60000
+			).toISOString(),
+			session_id: 'sess_sample_001',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {
+				tokens_input: 1500,
+				tokens_output: 3000,
+				duration_ms: 45000,
+				success: true,
+			},
+		},
+		{
+			event_id: 'evt_sample_003',
+			event_type: 'session_end',
+			timestamp: new Date(
+				Date.now() - 2 * 24 * 60 * 60 * 1000 + 120000
+			).toISOString(),
+			session_id: 'sess_sample_001',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_004',
+			event_type: 'session_start',
+			timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+			session_id: 'sess_sample_002',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {},
+		},
+		{
+			event_id: 'evt_sample_005',
+			event_type: 'task_complete',
+			timestamp: new Date(
+				Date.now() - 1 * 24 * 60 * 60 * 1000 + 30000
+			).toISOString(),
+			session_id: 'sess_sample_002',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {
+				tokens_input: 800,
+				tokens_output: 1200,
+				duration_ms: 25000,
+				success: true,
+			},
+		},
+		{
+			event_id: 'evt_sample_006',
+			event_type: 'session_end',
+			timestamp: new Date(
+				Date.now() - 1 * 24 * 60 * 60 * 1000 + 90000
+			).toISOString(),
+			session_id: 'sess_sample_002',
+			user_id: 'user_admin123',
+			agent_id: 'agent_test',
+			environment: 'production',
+			metadata: {},
+		},
+	];
+
+	await eventStore.ingest('org_test123', sampleEvents);
+}
+
+// Seed sample data on startup
+seedSampleData().catch(console.error);
+
 // Expose the in-memory store on globalThis to allow packages outside the
 // app (e.g., packages/database) to access the same singleton instance
 // when running in test or local dev environments where modules may be
