@@ -20,11 +20,11 @@ E2E tests use Playwright to test critical user flows through the full applicatio
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 8+
-- PostgreSQL running (for test database)
-- API server can start (port 3001)
-- Dashboard server can start (port 3000)
+-   Node.js 20+
+-   pnpm 8+
+-   PostgreSQL running (for test database)
+-   API server can start (port 3001)
+-   Dashboard server can start (port 3000)
 
 ### Running E2E Tests Locally
 
@@ -37,9 +37,6 @@ pnpm --filter @repo/database db:seed
 # 2. Run E2E tests (starts servers automatically)
 cd apps/dashboard
 pnpm test:e2e
-
-# Or with UI mode (interactive)
-pnpm test:e2e:ui
 ```
 
 ### Running Specific Tests
@@ -65,23 +62,23 @@ pnpm test:e2e --headed
 
 ### Test Files
 
-- `apps/dashboard/tests/e2e/mvp-flows.spec.ts` - MVP critical flows
-- `apps/dashboard/tests/e2e/dashboard.spec.ts` - Additional dashboard tests
+-   `apps/dashboard/tests/e2e/mvp-flows.spec.ts` - MVP critical flows
+-   `apps/dashboard/tests/e2e/dashboard.spec.ts` - Additional dashboard tests
 
 ### Test Setup
 
-- `apps/dashboard/tests/setup-e2e.ts` - Global setup (runs before all tests)
-  - Runs database migrations
-  - Seeds database with test data
-  - Ensures API server is ready
+-   `apps/dashboard/tests/setup-e2e.ts` - Global setup (runs before all tests)
+    -   Runs database migrations
+    -   Seeds database with test data
+    -   Ensures API server is ready
 
 ### Configuration
 
-- `apps/dashboard/playwright.config.ts` - Playwright configuration
-  - Starts API server (port 3001)
-  - Starts Dashboard server (port 3000)
-  - Configures test timeouts and retries
-  - Sets up test artifacts (screenshots, videos, traces)
+-   `apps/dashboard/playwright.config.ts` - Playwright configuration
+    -   Starts API server (port 3001)
+    -   Starts Dashboard server (port 3000)
+    -   Configures test timeouts and retries
+    -   Sets up test artifacts (screenshots, videos, traces)
 
 ## MVP E2E Flows
 
@@ -94,10 +91,10 @@ pnpm test:e2e --headed
 1. Navigate to dashboard (`/`)
 2. Wait for page to load
 3. Verify KPI cards are visible:
-   - Active Users (DAU)
-   - Total Sessions
-   - Success Rate
-   - Estimated Cost
+    - Active Users (DAU)
+    - Total Sessions
+    - Success Rate
+    - Estimated Cost
 4. Assert metric values are displayed (not empty/skeleton)
 5. Verify numeric values, percentages, and dollar amounts are present
 
@@ -105,9 +102,9 @@ pnpm test:e2e --headed
 
 **Data Requirements:**
 
-- Uses seeded data from `packages/database/src/seed.ts`
-- Requires events and sessions to be present in database
-- Metrics are calculated from seeded events
+-   Uses seeded data from `packages/database/src/seed.ts`
+-   Requires events and sessions to be present in database
+-   Metrics are calculated from seeded events
 
 ### Flow 2: Sessions List and Detail (Optional)
 
@@ -146,16 +143,16 @@ pnpm test:e2e --headed
 
 E2E tests use **seeded data** from `packages/database/src/seed.ts` to ensure:
 
-- **Stability:** Tests produce consistent results
-- **Speed:** No need to generate data during tests
-- **Predictability:** Known data makes assertions reliable
+-   **Stability:** Tests produce consistent results
+-   **Speed:** No need to generate data during tests
+-   **Predictability:** Known data makes assertions reliable
 
 ### Seeded Data Includes:
 
-- **2 Organizations:** `acme123`, `org_test`
-- **3 API Keys:** For testing authentication
-- **11 Sessions:** Across different time periods (1d, 7d, 30d)
-- **21 Events:** With metadata for metrics calculation
+-   **2 Organizations:** `acme123`, `org_test`
+-   **3 API Keys:** For testing authentication
+-   **11 Sessions:** Across different time periods (1d, 7d, 30d)
+-   **21 Events:** With metadata for metrics calculation
 
 ### Reseeding Data
 
@@ -173,9 +170,9 @@ pnpm --filter @repo/database db:seed
 
 E2E tests run in CI on:
 
-- **Main branch:** Always runs
-- **Pull requests:** Runs automatically
-- **Other branches:** Can be skipped (optional)
+-   **Main branch:** Always runs
+-   **Pull requests:** Runs automatically
+-   **Other branches:** Can be skipped (optional)
 
 ### CI Job: `e2e`
 
@@ -212,30 +209,30 @@ SKIP_E2E=true pnpm test
 
 **Issue:** Tests fail with "element not found"
 
-- **Solution:** Increase timeout or add explicit wait
+-   **Solution:** Increase timeout or add explicit wait
 
 **Issue:** Metrics show 0 or empty values
 
-- **Solution:** Ensure database is seeded before running tests
+-   **Solution:** Ensure database is seeded before running tests
 
 **Issue:** API server not starting
 
-- **Solution:** Check DATABASE_URL is set correctly
+-   **Solution:** Check DATABASE_URL is set correctly
 
 **Issue:** Tests timeout
 
-- **Solution:** Check that both API and Dashboard servers start successfully
+-   **Solution:** Check that both API and Dashboard servers start successfully
 
 ## Debugging
 
 ### View Test Execution
 
 ```bash
-# Run with UI mode (interactive)
-pnpm test:e2e:ui
-
 # Run in headed mode (see browser)
 pnpm test:e2e --headed
+
+# Run with UI mode (interactive) - use Playwright directly
+pnpm exec playwright test --ui
 
 # Run with debug mode
 PWDEBUG=1 pnpm test:e2e
@@ -245,9 +242,9 @@ PWDEBUG=1 pnpm test:e2e
 
 After test runs, check:
 
-- `playwright-report/` - HTML test report
-- `test-results/` - Screenshots, videos, traces
-- `tests/e2e/screenshots/` - Manual screenshots
+-   `playwright-report/` - HTML test report
+-   `test-results/` - Screenshots, videos, traces
+-   `tests/e2e/screenshots/` - Manual screenshots
 
 ### Debug Failed Tests
 
@@ -260,10 +257,10 @@ After test runs, check:
 
 ### Test Execution Time
 
-- **Flow 1:** ~5-10 seconds
-- **Flow 2:** ~10-15 seconds (if implemented)
-- **Flow 3:** ~8-12 seconds
-- **Total MVP suite:** ~25-40 seconds
+-   **Flow 1:** ~5-10 seconds
+-   **Flow 2:** ~10-15 seconds (if implemented)
+-   **Flow 3:** ~8-12 seconds
+-   **Total MVP suite:** ~25-40 seconds
 
 ### Optimization Tips
 
@@ -294,31 +291,31 @@ After test runs, check:
 
 **Characteristics:**
 
-- Uses seeded data for stability
-- Runs on Chromium only
-- Optional in CI (can be skipped)
-- Focus on core user journeys
+-   Uses seeded data for stability
+-   Runs on Chromium only
+-   Optional in CI (can be skipped)
+-   Focus on core user journeys
 
 ### Phase 2+ Extensions
 
 **Additional Flows:**
 
-- Authentication flow (login/logout)
-- Multi-tenant isolation
-- Advanced filtering
-- Export functionality
-- Settings pages
-- Real-time updates
-- Error handling flows
-- Mobile responsive flows
+-   Authentication flow (login/logout)
+-   Multi-tenant isolation
+-   Advanced filtering
+-   Export functionality
+-   Settings pages
+-   Real-time updates
+-   Error handling flows
+-   Mobile responsive flows
 
 **Infrastructure:**
 
-- Cross-browser testing (Firefox, Safari)
-- Visual regression testing
-- Performance benchmarking
-- Automated test data generation
-- Testcontainers for full stack isolation
+-   Cross-browser testing (Firefox, Safari)
+-   Visual regression testing
+-   Performance benchmarking
+-   Automated test data generation
+-   Testcontainers for full stack isolation
 
 ### Cross-Browser Testing
 
@@ -366,9 +363,9 @@ rm -rf ~/.cache/ms-playwright
 
 ## Related Documentation
 
-- [Testing Specification](./06-testing-specification.md) - Full testing strategy
-- [Frontend Architecture](./04-frontend-architecture-v1.1.md) - Dashboard structure
-- [Implementation Plan](./07-implementation-plan.md) - Phase 1 vs Phase 2 testing
+-   [Testing Specification](./06-testing-specification.md) - Full testing strategy
+-   [Frontend Architecture](./04-frontend-architecture-v1.1.md) - Dashboard structure
+-   [Implementation Plan](./07-implementation-plan.md) - Phase 1 vs Phase 2 testing
 
 ## Support
 

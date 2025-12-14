@@ -326,6 +326,20 @@ export function jwtAuth() {
         const requestId = generateRequestId();
         const authHeader = c.req.header('Authorization') || '';
         const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+        // In development/test, allow requests without token (use default org)
+        if (!match && (process.env.NODE_ENV !== 'production' || process.env.NODE_ENV === 'test')) {
+            const testAuth: AuthContext = {
+                org_id: 'org_default',
+                environment: process.env.NODE_ENV === 'test' ? 'production' : 'development',
+                token_type: 'jwt',
+            };
+            c.set('auth', testAuth);
+            c.set('requestId', requestId);
+            await next();
+            return;
+        }
+
         if (!match) {
             const response: ErrorResponse = {
                 error: {

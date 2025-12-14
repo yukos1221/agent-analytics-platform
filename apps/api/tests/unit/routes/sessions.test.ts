@@ -291,3 +291,4 @@ describe('GET /sessions/:session_id', () => {
         });
     });
 });
+
