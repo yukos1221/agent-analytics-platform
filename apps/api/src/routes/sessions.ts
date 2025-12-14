@@ -120,7 +120,9 @@ sessions.get('/:session_id', async (c) => {
     const sessionId = c.req.param('session_id');
 
     // Validate session ID format
-    if (!sessionId.match(/^sess_[a-zA-Z0-9]{20,30}$/)) {
+    // Accept sess_ followed by at least 1 alphanumeric character (including underscores)
+    // Examples: sess_recent_1 (test data), sess_abc123xyz (production)
+    if (!sessionId.match(/^sess_[a-zA-Z0-9_]+$/)) {
         return c.json<ErrorResponse>(
             {
                 error: {
@@ -129,7 +131,7 @@ sessions.get('/:session_id', async (c) => {
                     details: {
                         field: 'session_id',
                         received: sessionId,
-                        expected: 'sess_XXXXXXXXXXXXXXXXXXXX',
+                        expected: 'sess_XXXXX (alphanumeric with underscores)',
                     },
                 },
                 request_id: requestId,
