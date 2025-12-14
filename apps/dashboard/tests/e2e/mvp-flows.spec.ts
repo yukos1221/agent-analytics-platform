@@ -478,7 +478,9 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
                                 `📊 Session detail API: status=${sessionDetailStatus}, hasData=${!!sessionDetailData}`
                             );
                         } catch (e) {
-                            console.log(`📊 Session detail API: status=${sessionDetailStatus}, parse error`);
+                            console.log(
+                                `📊 Session detail API: status=${sessionDetailStatus}, parse error`
+                            );
                         }
                     }
                     return isDetailEndpoint;
@@ -504,8 +506,14 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
 
         // Step 13: Check page state before looking for header
         // Check for 404 page
-        const is404 = await page.getByText('404').isVisible().catch(() => false);
-        const isNotFound = await page.getByText('not found', { exact: false }).isVisible().catch(() => false);
+        const is404 = await page
+            .getByText('404')
+            .isVisible()
+            .catch(() => false);
+        const isNotFound = await page
+            .getByText('not found', { exact: false })
+            .isVisible()
+            .catch(() => false);
         if (is404 || isNotFound) {
             console.error('❌ Page shows 404/Not Found');
             console.error(`   Session ID: ${clickedSessionId}`);
@@ -517,18 +525,21 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         }
 
         // Check for loading state (skeleton)
-        const isLoading = await page.locator('.animate-pulse').isVisible().catch(() => false);
+        const isLoading = await page
+            .locator('.animate-pulse')
+            .isVisible()
+            .catch(() => false);
         if (isLoading) {
             console.log('⏳ Page still showing loading skeleton, waiting more...');
             await page.waitForTimeout(3000);
         }
 
         // Check for error boundary
-        const hasErrorBoundary = await page
+        const hasDetailErrorBoundary = await page
             .getByText('Something went wrong')
             .isVisible()
             .catch(() => false);
-        if (hasErrorBoundary) {
+        if (hasDetailErrorBoundary) {
             const bodyText = await page.textContent('body').catch(() => '');
             console.error('❌ Page error boundary triggered');
             console.error(`   Body text (first 500 chars): ${bodyText?.substring(0, 500)}`);
