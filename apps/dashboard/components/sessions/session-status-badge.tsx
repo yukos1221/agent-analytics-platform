@@ -3,13 +3,20 @@ import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { SessionStatus } from '@/types/api';
 
 interface SessionStatusBadgeProps {
-    status: SessionStatus;
+    status: SessionStatus | string; // Allow any string for robustness
     className?: string;
 }
 
 const statusConfig = {
     active: {
         label: 'Active',
+        icon: Clock,
+        className: 'bg-blue-50 text-blue-700 border-blue-200',
+        iconClassName: 'text-blue-500',
+    },
+    running: {
+        // Alias for 'active' - used by database seed
+        label: 'Running',
         icon: Clock,
         className: 'bg-blue-50 text-blue-700 border-blue-200',
         iconClassName: 'text-blue-500',
@@ -26,10 +33,25 @@ const statusConfig = {
         className: 'bg-red-50 text-red-700 border-red-200',
         iconClassName: 'text-red-500',
     },
+    failed: {
+        // Alias for 'error' - used by database seed
+        label: 'Failed',
+        icon: AlertCircle,
+        className: 'bg-red-50 text-red-700 border-red-200',
+        iconClassName: 'text-red-500',
+    },
 } as const;
 
+// Default config for unknown statuses
+const defaultConfig = {
+    label: 'Unknown',
+    icon: Clock,
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
+    iconClassName: 'text-gray-500',
+};
+
 export function SessionStatusBadge({ status, className }: SessionStatusBadgeProps) {
-    const config = statusConfig[status];
+    const config = statusConfig[status as keyof typeof statusConfig] || defaultConfig;
     const Icon = config.icon;
 
     return (

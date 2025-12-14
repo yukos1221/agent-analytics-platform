@@ -96,7 +96,9 @@ export interface SessionEventsResponse {
 }
 
 // Session API Types
-export type SessionStatus = 'active' | 'completed' | 'error';
+// Note: API spec uses 'active', 'completed', 'error' but database seed uses 'running', 'failed'
+// We support both for compatibility
+export type SessionStatus = 'active' | 'completed' | 'error' | 'running' | 'failed';
 
 export interface UserSummary {
 	name: string;
