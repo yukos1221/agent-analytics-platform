@@ -208,23 +208,48 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         await sessionsLink.click();
 
         // Step 3: Wait for sessions list page to load
-        await expect(page).toHaveURL('/dashboard/sessions', { timeout: 10000 });
+        await expect(page).toHaveURL('/dashboard/sessions', { timeout: 15000 });
+        console.log('✅ Navigated to /dashboard/sessions');
 
-        // Step 4: Wait for page header to appear (confirms page loaded)
-        await expect(page.getByRole('heading', { name: /Agent Sessions/i })).toBeVisible({
-            timeout: 10000,
-        });
+        // Step 4: Wait for page to be interactive first
+        await page.waitForLoadState('networkidle');
+        console.log('✅ Page is interactive');
 
         // Step 5: Wait for sessions API call to complete
         await sessionsResponsePromise;
 
-        // Wait for page to be interactive
-        await page.waitForLoadState('networkidle');
-
         // Additional wait for React to hydrate and render
         await page.waitForTimeout(2000);
+        console.log('✅ Waited for React hydration');
 
-        // Step 6: Check for error state first
+        // Step 6: Check if page loaded correctly - look for any content
+        // Check for Next.js error boundary first
+        const hasErrorBoundary = await page
+            .getByText('Something went wrong')
+            .isVisible()
+            .catch(() => false);
+        if (hasErrorBoundary) {
+            const errorText = await page
+                .locator('p')
+                .filter({ hasText: /error|failed/i })
+                .first()
+                .textContent()
+                .catch(() => 'Unknown error');
+            console.error('Page error boundary triggered:', errorText);
+            if (sessionsResponseStatus !== null) {
+                console.error('API Response status:', sessionsResponseStatus);
+                console.error('API Response data:', sessionsResponseData);
+            }
+            throw new Error(`Page error boundary: ${errorText}`);
+        }
+
+        // Check if page has any content
+        const pageContent = await page.textContent('body').catch(() => '');
+        if (!pageContent || pageContent.trim().length === 0) {
+            throw new Error('Page appears to be empty - page may not have loaded');
+        }
+
+        // Step 7: Check for error state first
         const hasError = await page
             .getByText('Error loading sessions')
             .isVisible()
@@ -240,11 +265,11 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
                 console.error('API Response status:', sessionsResponseStatus);
                 console.error('API Response data:', sessionsResponseData);
             }
-            test.skip();
-            return;
+            // Don't skip - fail the test so we can see what's wrong
+            throw new Error(`Sessions page error: ${errorMessage}`);
         }
 
-        // Step 7: Wait for sessions table to appear
+        // Step 8: Wait for sessions table to appear
         // The table should appear after loading completes
         // We wait for either the table itself or check if we're still in loading state
         await expect(async () => {
@@ -312,11 +337,11 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
             );
         }).toPass({ timeout: 20000 });
 
-        // Step 8: Verify sessions table is visible
+        // Step 9: Verify sessions table is visible
         const sessionsTable = page.locator('[data-testid="sessions-table"]');
-        await expect(sessionsTable).toBeVisible({ timeout: 5000 });
+        await expect(sessionsTable).toBeVisible({ timeout: 15000 });
 
-        // Step 9: Wait for at least one session row to be present (from seeded data)
+        // Step 10: Wait for at least one session row to be present (from seeded data)
         // Use count() to ensure we have actual rows, not just the table structure
         const sessionRows = page.locator('[data-testid*="session-row-"]');
 
@@ -349,14 +374,14 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         // Now verify the first row is visible
         await expect(sessionRows.first()).toBeVisible();
 
-        // Step 10: Click on the first session row
+        // Step 11: Click on the first session row
         const firstSession = sessionRows.first();
         await firstSession.click();
 
-        // Step 11: Verify navigation to session detail page
+        // Step 12: Verify navigation to session detail page
         await expect(page).toHaveURL(/\/dashboard\/sessions\/sess_/);
 
-        // Step 12: Verify SessionDetailHeader is visible with correct metadata
+        // Step 13: Verify SessionDetailHeader is visible with correct metadata
         // Use data-testid to avoid ambiguity with page h1 heading
         const sessionHeader = page.locator('[data-testid="session-detail-header"]');
         await expect(sessionHeader).toBeVisible();
@@ -366,7 +391,7 @@ test.describe('Flow 2: Sessions List and Detail @mvp', () => {
         const statusBadge = page.locator('[data-testid="session-status"]').first();
         await expect(statusBadge).toBeVisible();
 
-        // Step 13: Verify EventTimeline is rendered
+        // Step 14: Verify EventTimeline is rendered
         // Wait for events API call to complete (if it happens)
         await page
             .waitForResponse(

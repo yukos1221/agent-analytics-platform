@@ -1,21 +1,17 @@
 import { Suspense } from 'react';
-import {
-	dehydrate,
-	HydrationBoundary,
-	QueryClient,
-} from '@tanstack/react-query';
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { SessionTable } from '@/components/sessions/session-table';
 import { prefetchSessions } from '@/lib/hooks/useSessions';
 import type { PeriodOption } from '@/lib/hooks';
 
 interface PageProps {
-	searchParams: {
-		period?: PeriodOption;
-		status?: string;
-		agent?: string;
-		user?: string;
-		environment?: string;
-	};
+    searchParams: {
+        period?: PeriodOption;
+        status?: string;
+        agent?: string;
+        user?: string;
+        environment?: string;
+    };
 }
 
 /**
@@ -26,29 +22,34 @@ interface PageProps {
  * Per API Spec v1.2 - GET /v1/sessions endpoint
  */
 export default async function SessionsPage({ searchParams }: PageProps) {
-	const queryClient = new QueryClient();
+    const queryClient = new QueryClient();
 
-	// Extract filters from search params
-	const period = searchParams.period || '7d';
+    // Extract filters from search params
+    const period = searchParams.period || '7d';
 
-	// Prefetch initial data on server for better UX
-	await prefetchSessions(queryClient, period);
+    // Prefetch initial data on server for better UX
+    // Wrap in try-catch to prevent page from failing if prefetch errors
+    try {
+        await prefetchSessions(queryClient, period);
+    } catch (error) {
+        // Log error but continue rendering - client-side will retry
+        console.error('Failed to prefetch sessions:', error);
+    }
 
-	return (
-		<div className='space-y-6'>
-			<header>
-				<h1 className='text-xl sm:text-2xl font-bold'>Agent Sessions</h1>
-				<p className='text-sm sm:text-base text-muted-foreground'>
-					View and analyze AI agent sessions, their performance, and execution
-					details
-				</p>
-			</header>
+    return (
+        <div className="space-y-6">
+            <header>
+                <h1 className="text-xl sm:text-2xl font-bold">Agent Sessions</h1>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                    View and analyze AI agent sessions, their performance, and execution details
+                </p>
+            </header>
 
-			<HydrationBoundary state={dehydrate(queryClient)}>
-				<Suspense fallback={<SessionTable />}>
-					<SessionTable />
-				</Suspense>
-			</HydrationBoundary>
-		</div>
-	);
+            <HydrationBoundary state={dehydrate(queryClient)}>
+                <Suspense fallback={<SessionTable />}>
+                    <SessionTable />
+                </Suspense>
+            </HydrationBoundary>
+        </div>
+    );
 }
